@@ -19,7 +19,7 @@ class FullDataController extends GetxController {
   var rooms = <Map<String, dynamic>>[].obs;
 
   // ✅ Base URL
-  final String baseUrl = "https://05014e8222a4.ngrok-free.app";
+  final String baseUrl = "https://backend-couple-wallet-michaelst152166-1e8lpgte.apn.leapcell.dev";
 
   // ✅ Simpan data login
   // ✅ Simpan data login
