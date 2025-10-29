@@ -179,12 +179,12 @@ class _RegisterPageState extends State<RegisterPage> {
                                 );
                                 if (selected != null &&
                                     selected["status"]?.toLowerCase() == "max") {
-                                  controller.showPopup(context, "Room sudah penuh 💔", false);
+                                  controller.showPopup(context, "Room sudah penuh", false);
                                   return;
                                 }
                                 setState(() => _selectedRoom = v);
                               },
-                              validator: (v) => v == null ? "Pilih room dulu 💖" : null,
+                              validator: (v) => v == null ? "Pilih room dulu" : null,
                             ),
                             const SizedBox(height: 30),
 
@@ -216,7 +216,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                 ),
                                 child: isLoading
                                     ? const CircularProgressIndicator(color: Colors.white)
-                                    : Text("Daftar Bersama 💑",
+                                    : Text("Daftar Bersama",
                                         style: GoogleFonts.poppins(
                                             fontSize: 18,
                                             fontWeight: FontWeight.w600,
@@ -230,7 +230,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               onPressed: () {
                                 Get.off(() => const LoginPage());
                               },
-                              child: Text("Sudah punya akun? Masuk 💕",
+                              child: Text("Sudah punya akun? Masuk",
                                   style: GoogleFonts.poppins(
                                       color: const Color(0xFFF48668))),
                             ),

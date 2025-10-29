@@ -161,13 +161,13 @@ Future<void> loadFullData(String email, String password) async {
 
       refreshTotals();
 
-      print("✅ Login berhasil, data tersimpan di controller");
-      print("📊 PemasukanHarian: ${pemasukanHarian.length}, PengeluaranHarian: ${pengeluaranHarian.length}");
+      print("Login berhasil, data tersimpan di controller");
+      print("PemasukanHarian: ${pemasukanHarian.length}, PengeluaranHarian: ${pengeluaranHarian.length}");
     } else {
       throw Exception("Server error: ${response.statusCode}");
     }
   } catch (e) {
-    print("❌ Error loadFullData: $e");
+    print("Error loadFullData: $e");
     rethrow;
   } finally {
     isLoading.value = false;
@@ -182,10 +182,10 @@ Future<void> loadFullData(String email, String password) async {
     try {
       isLoading.value = true;
       final url = Uri.parse("$baseUrl/rooms");
-      print("🌐 Mengambil daftar rooms dari $url");
+      print("Mengambil daftar rooms dari $url");
 
       final response = await http.get(url);
-      print("📡 Status: ${response.statusCode}");
+      print("Status: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
@@ -202,12 +202,12 @@ Future<void> loadFullData(String email, String password) async {
           }
         }
         rooms.assignAll(parsedRooms);
-        print("✅ Rooms berhasil dimuat: ${rooms.length}");
+        print("Rooms berhasil dimuat: ${rooms.length}");
       } else {
         throw Exception("Gagal memuat daftar room (${response.statusCode})");
       }
     } catch (e) {
-      print("❌ Error loadRooms: $e");
+      print("Error load Rooms: $e");
       rethrow;
     } finally {
       isLoading.value = false;
@@ -231,19 +231,19 @@ Future<void> loadFullData(String email, String password) async {
       final selected = rooms.firstWhereOrNull((r) => r["room_name"] == roomName);
 
       if (selected == null) {
-        showPopup(context, "Room tidak ditemukan 💔", false);
+        showPopup(context, "Room tidak ditemukan", false);
         return;
       }
 
       if (selected["status"] == "max") {
-        showPopup(context, "Room sudah penuh 💔", false);
+        showPopup(context, "Room sudah penuh", false);
         return;
       }
 
       final roomId = rooms.indexOf(selected) + 1;
       final url = Uri.parse("$baseUrl/register");
 
-      print("🚀 Daftar user ke $url");
+      print("Daftar user ke $url");
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
@@ -256,28 +256,28 @@ Future<void> loadFullData(String email, String password) async {
         }),
       );
 
-      print("📡 Status: ${response.statusCode}");
-      print("📦 Response: ${response.body}");
+      print("Status: ${response.statusCode}");
+      print("Response: ${response.body}");
 
       if (response.statusCode == 201) {
-        showPopup(context, "Berhasil daftar di $roomName 💞", true);
+        showPopup(context, "Berhasil daftar di $roomName", true);
         await Future.delayed(const Duration(seconds: 2));
         Get.offAll(() => const LoginPage());
         return;
       }
 
-      String failReason = "Gagal daftar 💔";
+      String failReason = "Gagal daftar";
       try {
         final decoded = jsonDecode(response.body);
         if (decoded is Map && decoded.containsKey("message")) {
           final msg = decoded["message"].toString().toLowerCase();
 
           if (msg.contains("email")) {
-            failReason = "Email sudah terdaftar 💔";
+            failReason = "Email sudah terdaftar";
           } else if (msg.contains("name") || msg.contains("nama")) {
-            failReason = "Nama sudah digunakan 💔";
+            failReason = "Nama sudah digunakan";
           } else if (msg.contains("room")) {
-            failReason = "Room sudah penuh atau tidak valid 💔";
+            failReason = "Room sudah penuh atau tidak valid";
           } else {
             failReason = decoded["message"].toString();
           }
@@ -285,14 +285,14 @@ Future<void> loadFullData(String email, String password) async {
           failReason = response.body.toString();
         }
       } catch (e) {
-        print("⚠️ Gagal parse error response: $e");
+        print("Gagal parse error response: $e");
         failReason = "Gagal daftar (data tidak valid atau sudah digunakan)";
       }
 
       showPopup(context, failReason, false);
     } catch (e) {
-      print("❌ Error registerUser: $e");
-      showPopup(context, "Terjadi kesalahan koneksi 😢\n$e", false);
+      print("Error register User: $e");
+      showPopup(context, "Terjadi kesalahan koneksi \n$e", false);
     } finally {
       isLoading.value = false;
     }
@@ -330,8 +330,8 @@ Future<void> loadFullData(String email, String password) async {
 
       showOCRPopup(context, lines, userId, roomId);
     } catch (e) {
-      print("❌ Error showUploadPopup: $e");
-      showPopup(context, "Gagal memproses gambar 😢\n$e", false);
+      print("Error show Upload Popup: $e");
+      showPopup(context, "Gagal memproses gambar \n$e", false);
     }
   }
 
@@ -339,7 +339,7 @@ void showOCRPopup(BuildContext context, List<String> lines, int userId, int room
   showDialog(
     context: context,
     barrierDismissible: true,
-    builder: (context) => Dialog(
+    builder: (dialogContext) => Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -347,7 +347,7 @@ void showOCRPopup(BuildContext context, List<String> lines, int userId, int room
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              "Hasil OCR",
+              "Keterangan Transaksi",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
@@ -360,8 +360,13 @@ void showOCRPopup(BuildContext context, List<String> lines, int userId, int room
                   children: lines.map((line) {
                     return InkWell(
                       onTap: () {
-                        Navigator.pop(context);
-                        showNominalDetailPopup(context, line, userId, roomId);
+                        // Tutup dialog pertama
+                        Navigator.pop(dialogContext);
+
+                        // Gunakan addPostFrameCallback untuk memastikan UI sudah selesai rebuild
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          showNominalDetailPopup(context, line, userId, roomId);
+                        });
                       },
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -374,7 +379,7 @@ void showOCRPopup(BuildContext context, List<String> lines, int userId, int room
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF48668),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -390,84 +395,148 @@ void showOCRPopup(BuildContext context, List<String> lines, int userId, int room
 
 
 
-void showNominalDetailPopup(BuildContext context, String nominal, int userId, int roomId) {
-  String selectedStatus = 'Pemasukan';
-  bool isSending = false;
+Map<String, dynamic> extractAmountFromText(String text) {
+  // Cari pola setelah Rp / RP
+  final match = RegExp(r'rp[\s\.:]*([\d\.,]+)', caseSensitive: false).firstMatch(text);
+  if (match == null) return {"display": "", "value": 0};
 
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setState) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                "Detail Transaksi",
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              Text("Nominal: $nominal", style: const TextStyle(fontSize: 18)),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("Status: ", style: TextStyle(fontWeight: FontWeight.bold)),
-                  DropdownButton<String>(
-                    value: selectedStatus,
-                    items: ['Pemasukan', 'Pengeluaran']
-                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                        .toList(),
-                    onChanged: (val) => setState(() => selectedStatus = val!),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              
-              // Ubah dari Column menjadi Row untuk tombol
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFF48668),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
-                    onPressed: isSending
-                        ? null
-                        : () async {
-                            setState(() => isSending = true);
-                            await _submitTransaction(context, selectedStatus, nominal, userId, roomId);
-                            setState(() => isSending = false);
-                          },
-                    child: isSending
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                          )
-                        : const Text("Kirim", style: TextStyle(color: Colors.white)),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("Tutup"),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
+  String raw = match.group(1)!; // misal: "65.000,00"
+  raw = raw.replaceAll(' ', '');
+
+  // Normalisasi format Indonesia
+  if (raw.contains(',') && raw.split(',').last.length <= 2) {
+    raw = raw.split(',')[0];
+  }
+
+  final cleaned = raw.replaceAll(RegExp(r'[^0-9]'), '');
+  final intValue = int.tryParse(cleaned) ?? 0;
+
+  String formatWithDots(int n) {
+    final s = n.toString();
+    final buffer = StringBuffer();
+    int count = 0;
+    for (int i = s.length - 1; i >= 0; i--) {
+      buffer.write(s[i]);
+      count++;
+      if (count % 3 == 0 && i != 0) buffer.write('.');
+    }
+    return buffer.toString().split('').reversed.join();
+  }
+
+  final display = intValue > 0 ? formatWithDots(intValue) : "";
+
+  return {"display": display, "value": intValue};
 }
 
 
-  Future<void> _submitTransaction(
-      BuildContext context, String status, String nominal, int userId, int roomId) async {
+
+void showNominalDetailPopup(
+    BuildContext context, String nominal, int userId, int roomId) {
+  String selectedStatus = 'Pemasukan';
+  bool isSending = false;
+
+  final parsed = extractAmountFromText(nominal) ?? {"display": "", "value": 0};
+  final cleanDisplay = parsed["display"]?.toString() ?? "";
+  final shownText = cleanDisplay.isNotEmpty ? "Rp $cleanDisplay" : nominal;
+
+  // Pastikan dialog dipanggil setelah frame berikutnya (aman dari context invalid)
+  Future.delayed(const Duration(milliseconds: 100), () {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (BuildContext context, void Function(void Function()) setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "Detail Transaksi",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    Text("Nominal: $shownText", style: const TextStyle(fontSize: 18)),
+                    const SizedBox(height: 16),
+
+                    // Dropdown status
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text("Status: ", style: TextStyle(fontWeight: FontWeight.bold)),
+                        DropdownButton<String>(
+                          value: selectedStatus,
+                          items: ['Pemasukan', 'Pengeluaran']
+                              .map((e) =>
+                                  DropdownMenuItem(value: e, child: Text(e)))
+                              .toList(),
+                          onChanged: (val) => setState(() => selectedStatus = val!),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Tombol Aksi
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFF48668),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16)),
+                          ),
+                          onPressed: isSending
+                              ? null
+                              : () async {
+                                  setState(() => isSending = true);
+
+                                  final sendNominal = cleanDisplay.isNotEmpty
+                                      ? cleanDisplay
+                                      : nominal;
+
+                                  // 🟡 Gunakan context dialogContext agar popup tidak hilang
+                                  await _submitTransaction(dialogContext, selectedStatus,
+                                      sendNominal, userId, roomId);
+
+                                  setState(() => isSending = false);
+                                },
+                          child: isSending
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                      color: Colors.white, strokeWidth: 2),
+                                )
+                              : const Text("Kirim",
+                                  style: TextStyle(color: Colors.white)),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          child: const Text("Tutup"),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  });
+}
+
+
+
+
+
+
+  Future<void> _submitTransaction(BuildContext context, String status, String nominal, int userId, int roomId) async {
     final url = Uri.parse(status == 'Pemasukan' ? '$baseUrl/pemasukan' : '$baseUrl/pengeluaran');
 
     int parseNominal(String nominal) {
@@ -488,10 +557,10 @@ void showNominalDetailPopup(BuildContext context, String nominal, int userId, in
       if (response.statusCode == 200 || response.statusCode == 201) {
         showPopup(context, "Transaksi berhasil dikirim!", true);
       } else {
-        showPopup(context, "Gagal kirim transaksi 💔\n${response.body}", false);
+        showPopup(context, "Gagal kirim transaksi \n${response.body}", false);
       }
     } catch (e) {
-      showPopup(context, "Kesalahan koneksi 😢\n$e", false);
+      showPopup(context, "Kesalahan koneksi \n$e", false);
     }
   }
 
@@ -506,7 +575,7 @@ Future<List<String>?> scanStruk() async {
     await textRecognizer.close();
 
     // Cari semua pattern nominal seperti: Rp 12.000 atau Rp12.000,00
-    final regex = RegExp(r'Rp\s?[0-9\.\,]+');
+    final regex = RegExp(r'rp[\s\.:]*([\d\.,]+)', caseSensitive: false);
     final matches = regex.allMatches(recognizedText.text);
 
     // Ambil semua hasil pencarian ke dalam list
@@ -523,7 +592,7 @@ Future<List<String>?> scanStruk() async {
 
     return results.isNotEmpty ? results : null;
   } catch (e) {
-    debugPrint("❌ Gagal melakukan OCR: $e");
+    debugPrint("Gagal melakukan OCR: $e");
     return null;
   }
 }
@@ -532,45 +601,66 @@ Future<List<String>?> scanStruk() async {
   // =========================================================
   // 💬 POPUP FEEDBACK
   // =========================================================
-  void showPopup(BuildContext context, String message, bool success) {
-    Get.dialog(
-      Center(
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: 1),
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutBack,
-          builder: (context, value, child) => Transform.scale(
-            scale: value,
-            child: AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              backgroundColor: Colors.white,
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(success ? Icons.check_circle_outline : Icons.error_outline,
-                      color: success ? Colors.green : Colors.redAccent, size: 60),
-                  const SizedBox(height: 16),
-                  Text(
-                    success ? "Berhasil 🎉\n$message" : "Gagal ❌\n$message",
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Get.back(),
-                  child: const Text("OK",
-                      style: TextStyle(color: Color(0xFFF48668), fontWeight: FontWeight.bold)),
+void showPopup(BuildContext context, String message, bool success) {
+  double scale = 0; // nilai awal untuk animasi zoom-in dan zoom-out
+  bool closing = false;
+
+  Get.dialog(
+    StatefulBuilder(
+      builder: (context, setState) {
+        // Jalankan animasi zoom-in saat popup muncul
+        Future.delayed(const Duration(milliseconds: 50), () {
+          setState(() => scale = 1);
+        });
+
+        // Setelah 2 detik, jalankan animasi zoom-out lalu tutup
+        Future.delayed(const Duration(seconds: 2), () async {
+          if (!closing) {
+            closing = true;
+            setState(() => scale = 0);
+            await Future.delayed(const Duration(milliseconds: 250));
+            if (Get.isDialogOpen ?? false) Get.back();
+          }
+        });
+
+        return Center(
+          child: AnimatedScale(
+            scale: scale,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOutBack,
+            child: AnimatedOpacity(
+              opacity: scale,
+              duration: const Duration(milliseconds: 300),
+              child: AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                backgroundColor: Colors.white,
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      success ? Icons.check_circle_outline : Icons.error_outline,
+                      color: success ? Colors.green : Colors.redAccent,
+                      size: 60,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      success ? "Berhasil \n$message" : "Gagal\n$message",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
-      barrierDismissible: false,
-    );
-  }
+        );
+      },
+    ),
+    barrierDismissible: false,
+  );
+}
+
+
 
   Future<List<Map<String, dynamic>>> fetchTransaksi() async {
   if (fullData['user_id'] == null || fullData['room_id'] == null) return [];
@@ -590,7 +680,7 @@ Future<List<String>?> scanStruk() async {
     }
     return [];
   } catch (e) {
-    print("❌ Error fetchTransaksi: $e");
+    print("Error Fetch Transaksi: $e");
     return [];
   }
 }
@@ -631,7 +721,7 @@ Future<bool> simpanTransaksi({
     final data = jsonDecode(response.body);
     return response.statusCode == 200 && data["status"] == "success";
   } catch (e) {
-    print("❌ Error simpanTransaksi: $e");
+    print("Error Simpan Transaksi: $e");
     return false;
   }
 }

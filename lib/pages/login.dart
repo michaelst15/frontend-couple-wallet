@@ -45,7 +45,7 @@ Future<void> _login() async {
     }
 
     final String userName = data['user_name'] ?? "User";
-    _showLoginDialog(true, "Login berhasil 💕", userName);
+    _showLoginDialog(true, "Login berhasil", userName);
 
     // ✅ Simpan data untuk navigasi
     final safeData = Map<String, dynamic>.from(data);
@@ -256,7 +256,7 @@ Future<void> _login() async {
                                 color: Colors.white,
                               )
                             : Text(
-                                "Masuk Bersama 💑",
+                                "Masuk Bersama",
                                 style: GoogleFonts.poppins(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600,
@@ -269,7 +269,7 @@ Future<void> _login() async {
                         child: TextButton(
                           onPressed: () => Get.off(() => const RegisterPage()),
                           child: Text(
-                            "Belum punya akun? Daftar dulu ya 💕",
+                            "Belum punya akun? Daftar dulu ya",
                             style: GoogleFonts.poppins(
                               color: const Color(0xFFF48668),
                               fontWeight: FontWeight.w500,
