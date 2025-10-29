@@ -328,62 +328,67 @@ Future<void> loadFullData(String email, String password) async {
 
       final lines = recognizedText.blocks.expand((b) => b.lines).map((l) => l.text).toList();
 
-      _showOCRPopup(context, lines, userId, roomId);
+      showOCRPopup(context, lines, userId, roomId);
     } catch (e) {
       print("❌ Error showUploadPopup: $e");
       showPopup(context, "Gagal memproses gambar 😢\n$e", false);
     }
   }
 
-  void _showOCRPopup(BuildContext context, List<String> lines, int userId, int roomId) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text("Hasil OCR", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: 300,
-                height: 400,
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: lines.map((line) {
-                      return InkWell(
-                        onTap: () {
-                          Navigator.pop(context);
-                          showNominalDetailPopup(context, line, userId, roomId);
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Text(line, style: const TextStyle(fontSize: 16)),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+void showOCRPopup(BuildContext context, List<String> lines, int userId, int roomId) {
+  showDialog(
+    context: context,
+    barrierDismissible: true,
+    builder: (context) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "Hasil OCR",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: 300,
+              height: 400,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: lines.map((line) {
+                    return InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        showNominalDetailPopup(context, line, userId, roomId);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Text(line, style: const TextStyle(fontSize: 16)),
+                      ),
+                    );
+                  }).toList(),
                 ),
               ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF48668),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                child: const Text("Tutup", style: TextStyle(color: Colors.white)),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF48668),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
-            ],
-          ),
+              child: const Text("Tutup", style: TextStyle(color: Colors.white)),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+
 
 void showNominalDetailPopup(BuildContext context, String nominal, int userId, int roomId) {
   String selectedStatus = 'Pemasukan';
@@ -490,23 +495,39 @@ void showNominalDetailPopup(BuildContext context, String nominal, int userId, in
     }
   }
 
-  Future<String?> scanStruk() async {
-  final pickedFile = await ImagePicker().pickImage(source: ImageSource.camera);
-  if (pickedFile == null) return null;
+Future<List<String>?> scanStruk() async {
+  try {
+    final pickedFile = await ImagePicker().pickImage(source: ImageSource.camera);
+    if (pickedFile == null) return null;
 
-  final inputImage = InputImage.fromFile(File(pickedFile.path));
-  final textRecognizer = GoogleMlKit.vision.textRecognizer();
-  final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
-  await textRecognizer.close();
+    final inputImage = InputImage.fromFile(File(pickedFile.path));
+    final textRecognizer = GoogleMlKit.vision.textRecognizer();
+    final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
+    await textRecognizer.close();
 
-  // Cari pattern Rp xxx.xxx
-  final regex = RegExp(r'Rp\s?[0-9\.\,]+');
-  final match = regex.firstMatch(recognizedText.text);
-  if (match != null) {
-    return match.group(0);
+    // Cari semua pattern nominal seperti: Rp 12.000 atau Rp12.000,00
+    final regex = RegExp(r'Rp\s?[0-9\.\,]+');
+    final matches = regex.allMatches(recognizedText.text);
+
+    // Ambil semua hasil pencarian ke dalam list
+    List<String> results = matches.map((m) => m.group(0) ?? '').where((s) => s.isNotEmpty).toList();
+
+    // Kalau tidak ada nominal, tetap tampilkan hasil teks OCR sebagai fallback
+    if (results.isEmpty) {
+      results = recognizedText.text
+          .split('\n')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+
+    return results.isNotEmpty ? results : null;
+  } catch (e) {
+    debugPrint("❌ Gagal melakukan OCR: $e");
+    return null;
   }
-  return null;
 }
+
 
   // =========================================================
   // 💬 POPUP FEEDBACK

@@ -318,7 +318,7 @@ class _HomePageState extends State<HomePageUtama> with TickerProviderStateMixin 
                 final result = await controller.scanStruk(); // pakai kamera
                 if (result != null) {
                   // langsung panggil popup transaksi dengan nominal hasil scan
-                  controller.showNominalDetailPopup(
+                  controller.showOCRPopup(
                     context,
                     result, 
                     controller.fullData['user_id'],
