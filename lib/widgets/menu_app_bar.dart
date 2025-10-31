@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:lottie/lottie.dart';
 
 class MainAppBar extends StatefulWidget implements PreferredSizeWidget {
   final String title;
@@ -31,30 +32,30 @@ class MainAppBar extends StatefulWidget implements PreferredSizeWidget {
 
 class _MainAppBarState extends State<MainAppBar>
     with SingleTickerProviderStateMixin {
-  late AnimationController _shakeController;
+  late AnimationController _lottieController;
 
   @override
   void initState() {
     super.initState();
-    _shakeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
+    _lottieController = AnimationController(vsync: this);
   }
 
   @override
   void didUpdateWidget(MainAppBar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.hasNewData && !_shakeController.isAnimating) {
-      _shakeController.repeat(reverse: true);
-    } else if (!widget.hasNewData && _shakeController.isAnimating) {
-      _shakeController.stop();
+
+    // 🌀 Saat data baru muncul → mainkan animasi
+    if (widget.hasNewData) {
+      _lottieController.repeat(); // Loop animasi selama ada data baru
+    } else {
+      _lottieController.stop();
+      _lottieController.reset(); // Diam di frame awal
     }
   }
 
   @override
   void dispose() {
-    _shakeController.dispose();
+    _lottieController.dispose();
     super.dispose();
   }
 
@@ -66,10 +67,11 @@ class _MainAppBarState extends State<MainAppBar>
       builder: (context) {
         return FadeInDown(
           child: AlertDialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: const Text(
-              "🔔 Data Baru Tersedia",
+              "Data Baru Tersedia",
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             content: SizedBox(
@@ -82,8 +84,7 @@ class _MainAppBarState extends State<MainAppBar>
                   return ListTile(
                     leading: const Icon(Icons.fiber_new, color: Colors.orange),
                     title: Text(data['title'] ?? 'Data baru'),
-                    subtitle:
-                        Text(data['description'] ?? 'Update terbaru diterima'),
+                    subtitle: Text(data['description'] ?? 'Update terbaru diterima'),
                   );
                 },
               ),
@@ -117,38 +118,74 @@ class _MainAppBarState extends State<MainAppBar>
         ),
       ),
       centerTitle: true,
+      // leading: IconButton(
+      //   icon: const Icon(Icons.menu, color: Colors.white),
+      //   onPressed: () => widget.scaffoldKey.currentState?.openDrawer(),
+      // ),
       actions: [
-        AnimatedBuilder(
-          animation: _shakeController,
-          builder: (context, child) {
-            final offset = 2 * (1 - (_shakeController.value * 2 - 1).abs());
-            return Transform.translate(
-              offset: widget.hasNewData ? Offset(offset, 0) : Offset.zero,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.notifications),
-                    onPressed: _showNotificationPopup,
-                    tooltip: 'Lihat Notifikasi',
+        Padding(
+          padding: const EdgeInsets.only(right: 12.0),
+          child: GestureDetector(
+            onTap: _showNotificationPopup,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // ⚪ Background putih bulat lebih kecil & center
+                Container(
+                  width: 44, // sedikit lebih kecil dari sebelumnya
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.10),
+                        blurRadius: 5,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
-                  if (widget.hasNewData)
-                    Positioned(
-                      right: 11,
-                      top: 11,
-                      child: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          color: Colors.redAccent,
-                          shape: BoxShape.circle,
-                        ),
+                  child: Center(
+                    // 🔔 Perbesar sedikit animasi di dalam lingkaran
+                    child: Transform.scale(
+                      scale: 1.15, // sesuaikan proporsi animasi di dalam background
+                      child: Lottie.asset(
+                        'lib/animasi/notifikasi.json',
+                        controller: _lottieController,
+                        repeat: true,
+                        animate: widget.hasNewData,
+                        onLoaded: (composition) {
+                          _lottieController.duration = composition.duration;
+                          if (widget.hasNewData) {
+                            _lottieController.repeat();
+                          }
+                        },
                       ),
                     ),
-                ],
-              ),
-            );
-          },
+                  ),
+                ),
+
+                // 🔴 Titik merah indikator notifikasi baru
+                if (widget.hasNewData)
+                  Positioned(
+                    right: 8,
+                    top: 6,
+                    child: Container(
+                      width: 9,
+                      height: 9,
+                      decoration: const BoxDecoration(
+                        color: Colors.redAccent,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            )
+
+
+
+
+          ),
         ),
       ],
     );

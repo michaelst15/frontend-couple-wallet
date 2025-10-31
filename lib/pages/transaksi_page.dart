@@ -87,7 +87,7 @@ class _TransaksiPageState extends State<TransaksiPage> {
           children: [
             Text(
               "Tambah Transaksi",
-              style: GoogleFonts.lobster(
+              style: GoogleFonts.abel(
                   fontSize: 20, fontWeight: FontWeight.w600, color: const Color.fromARGB(255, 99, 98, 98)),
             ),
             const SizedBox(height: 12),
@@ -173,7 +173,7 @@ class _TransaksiPageState extends State<TransaksiPage> {
             const SizedBox(height: 24),
             Text(
               "Transaksi Terakhir",
-              style: GoogleFonts.lobster(
+              style: GoogleFonts.abel(
                   fontSize: 20, fontWeight: FontWeight.w600, color: const Color.fromARGB(255, 99, 98, 98)),
             ),
             const SizedBox(height: 12),
@@ -204,42 +204,66 @@ class _TransaksiPageState extends State<TransaksiPage> {
                 }
 
                 final transaksiList = snapshot.data!;
-                return ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: transaksiList.length,
-                  itemBuilder: (context, index) {
-                    final tx = transaksiList[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: ListTile(
-                        leading: Icon(
-                          tx["jenis"] == "Pemasukan" ? Icons.arrow_downward : Icons.arrow_upward,
-                          color: tx["jenis"] == "Pemasukan" ? Colors.green : Colors.red,
-                        ),
-                        title: Text(
-                          "${tx["kategori"]} - Rp ${tx["nominal"]}",
-                          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              tx["keterangan"] ?? "",
-                              style: GoogleFonts.poppins(fontSize: 13),
+
+                  // Hitung tinggi container berdasarkan jumlah item
+                  final bool bisaScroll = transaksiList.length > 3;
+                  final double containerHeight = bisaScroll ? 300 : transaksiList.length * 90;
+
+                  return Container(
+                    constraints: BoxConstraints(
+                      maxHeight: containerHeight, // Batasi tinggi maksimal
+                    ),
+                    child: Scrollbar(
+                      thumbVisibility: bisaScroll, // tampilkan scrollbar hanya kalau perlu
+                      radius: const Radius.circular(8),
+                      child: ListView.builder(
+                        physics: bisaScroll
+                            ? const BouncingScrollPhysics() // bisa di-scroll
+                            : const NeverScrollableScrollPhysics(), // tidak di-scroll
+                        shrinkWrap: true,
+                        itemCount: transaksiList.length,
+                        itemBuilder: (context, index) {
+                          final tx = transaksiList[index];
+                          return Card(
+                            margin: const EdgeInsets.symmetric(vertical: 6),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              "Tanggal: ${DateTime.parse(tx["tanggal_update"]).toLocal().toIso8601String().substring(0, 10)}",
-                              style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
+                            child: ListTile(
+                              leading: Icon(
+                                tx["jenis"] == "Pemasukan"
+                                    ? Icons.arrow_downward
+                                    : Icons.arrow_upward,
+                                color: tx["jenis"] == "Pemasukan" ? Colors.green : Colors.red,
+                              ),
+                              title: Text(
+                                "${tx["kategori"]} - Rp ${tx["nominal"]}",
+                                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    tx["keterangan"] ?? "",
+                                    style: GoogleFonts.poppins(fontSize: 13),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    "Tanggal: ${DateTime.parse(tx["tanggal_update"]).toLocal().toIso8601String().substring(0, 10)}",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                );
+                    ),
+                  );
+
               },
             ),
           ],
@@ -284,7 +308,7 @@ class ZoomPopup extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text("OK"),
+                child: const Text("OK", style: TextStyle(color: Colors.white)),
               ),
             ],
           ),

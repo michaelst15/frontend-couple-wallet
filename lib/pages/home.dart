@@ -146,7 +146,7 @@ class _HomePageState extends State<HomePageUtama> with TickerProviderStateMixin 
                       widget.members.isNotEmpty
                           ? widget.members.map((m) => m.split(" ")[0]).join(" & ")
                           : "Belum ada pasangan",
-                      style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87),
+                      style: GoogleFonts.abhayaLibre(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87),
                     ),
                     Text("Bersama sejak $loginYear", style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700])),
                   ],
@@ -168,29 +168,108 @@ class _HomePageState extends State<HomePageUtama> with TickerProviderStateMixin 
                 decoration: BoxDecoration(
                   color: const Color(0xFFF48668),
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4))]
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Saldo Bersama", style: GoogleFonts.poppins(color: Colors.white.withOpacity(0.9), fontSize: 16)),
-                    const SizedBox(height: 10),
-                    Text(
-                      "Rp ${widget.totalRoomSaldo.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}",
-                      style: GoogleFonts.poppins(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w700),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
                     ),
-                    const SizedBox(height: 8),
-                    Text("Diperbarui: ${_formatTanggal(widget.terakhirUpdate)}", style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    // 🔹 Konten utama saldo
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Saldo Bersama",
+                          style: GoogleFonts.poppins(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          "Rp ${widget.totalRoomSaldo.toStringAsFixed(0).replaceAllMapped(
+                                RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                                (m) => '${m[1]}.',
+                              )}",
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Diperbarui: ${_formatTanggal(widget.terakhirUpdate)}",
+                          style: GoogleFonts.poppins(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // 🔹 Ikon info di pojok kanan atas
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: IconButton(
+                        icon: const Icon(Icons.info_outline, color: Colors.white),
+                        tooltip: "Informasi Saldo Bersama",
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              title: Text(
+                                "Informasi",
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color.fromARGB(221, 71, 71, 71),
+                                ),
+                              ),
+                              content: Text(
+                                "Saldo Bersama ini merupakan gabungan dari transaksi yang dilakukan "
+                                "dengan menggunakan struk bank dan transaksi yang dilakukan di luar dari struk.",
+                                style: GoogleFonts.poppins(
+                                  color: Colors.black54,
+                                  fontSize: 14,
+                                  height: 1.5,
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text(
+                                    "Tutup",
+                                    style: GoogleFonts.poppins(
+                                      color: const Color(0xFFF48668),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
+
             const SizedBox(height: 30),
 
             // Statistik Keuangan
             Text(
-                "Statistik Keuangan Via Struck",
-                style: GoogleFonts.lobster(
+                "Statistik Keuangan Rek Bank",
+                style: GoogleFonts.abel(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: const Color.fromARGB(255, 99, 98, 98),
@@ -298,7 +377,7 @@ class _HomePageState extends State<HomePageUtama> with TickerProviderStateMixin 
             Center(
               child: Text(
                 "Pemasukan dan Pengeluaran",
-                style: GoogleFonts.lobster(fontSize: 20, fontWeight: FontWeight.w400, color: const Color.fromARGB(255, 99, 98, 98)),
+                style: GoogleFonts.abel(fontSize: 20, fontWeight: FontWeight.w400, color: const Color.fromARGB(255, 99, 98, 98)),
               ),
             ),
             const SizedBox(height: 20),
@@ -325,7 +404,7 @@ class _HomePageState extends State<HomePageUtama> with TickerProviderStateMixin 
                     controller.fullData['room_id'],
                   );
                 } else {
-                  controller.showPopup(context, "Gagal scan struk 😢", false);
+                  controller.showPopup(context, "Gagal scan struk", false);
                 }
               },
               icon: const Icon(Icons.qr_code_scanner, size: 24, color: Colors.white),

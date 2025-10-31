@@ -19,7 +19,8 @@ class FullDataController extends GetxController {
   var rooms = <Map<String, dynamic>>[].obs;
 
   // ✅ Base URL
-  final String baseUrl = "https://backend-couple-wallet-michaelst152166-1e8lpgte.apn.leapcell.dev";
+  // final String baseUrl = "https://backend-couple-wallet-michaelst152166-1e8lpgte.apn.leapcell.dev";
+  final String baseUrl = "https://f5ca77d6659c.ngrok-free.app";
 
   // ✅ Simpan data login
   // ✅ Simpan data login
@@ -84,40 +85,51 @@ class FullDataController extends GetxController {
     }
 
     // Panggil ini setiap kali data diperbarui
- Future<void> refreshData() async {
+Future<void> refreshData() async {
   if (fullData['email'] != null && fullData['password'] != null) {
     try {
       isLoading.value = true;
 
-      final oldPemasukanCount = pemasukanHarian.length;
-      final oldPengeluaranCount = pengeluaranHarian.length;
+      // Simpan data lama untuk perbandingan
+      final oldPemasukan = List<Map<String, dynamic>>.from(pemasukanHarian);
+      final oldPengeluaran = List<Map<String, dynamic>>.from(pengeluaranHarian);
 
+      // Ambil data terbaru dari server
       await loadFullData(fullData['email'], fullData['password']);
-      refreshTotals();
 
-      // ✅ Deteksi data baru
-          if (pemasukanHarian.length > oldPemasukanCount) {
-            hasNewNotification.value = true;
-            newDataList.add({
-              "judul": "Pemasukan Baru",
-              "detail": "Ada pemasukan baru tercatat di sistem.",
-            });
-          }
+      // ✅ Bandingkan apakah ada pemasukan baru
+      bool adaPemasukanBaru = pemasukanHarian.any((p) =>
+          !oldPemasukan.any((old) => jsonEncode(old) == jsonEncode(p)));
 
-          if (pengeluaranHarian.length > oldPengeluaranCount) {
-            hasNewNotification.value = true;
-            newDataList.add({
-              "judul": "Pengeluaran Baru",
-              "detail": "Ada pengeluaran baru tercatat di sistem.",
-            });
-          }
-        } catch (e) {
-          print("❌ Error refreshData: $e");
-        } finally {
-          isLoading.value = false;
-        }
+      // ✅ Bandingkan apakah ada pengeluaran baru
+      bool adaPengeluaranBaru = pengeluaranHarian.any((p) =>
+          !oldPengeluaran.any((old) => jsonEncode(old) == jsonEncode(p)));
+
+      // Tambahkan notifikasi baru jika ada perubahan
+      if (adaPemasukanBaru) {
+        hasNewNotification.value = true;
+        newDataList.add({
+          "judul": "Pemasukan Baru",
+          "detail": "Ada pemasukan baru tercatat di sistem.",
+        });
       }
+
+      if (adaPengeluaranBaru) {
+        hasNewNotification.value = true;
+        newDataList.add({
+          "judul": "Pengeluaran Baru",
+          "detail": "Ada pengeluaran baru tercatat di sistem.",
+        });
+      }
+
+    } catch (e) {
+      print("❌ Error refreshData: $e");
+    } finally {
+      isLoading.value = false;
     }
+  }
+}
+
 
     void clearNotificationFlag() {
       hasNewNotification.value = false;
@@ -481,9 +493,12 @@ void showNominalDetailPopup(
 
                     // Tombol Aksi
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        ElevatedButton(
+                    mainAxisAlignment: MainAxisAlignment.center, // buat button tetap berdekatan
+                    children: [
+                      SizedBox(
+                        width: 120, // lebar button "Kirim"
+                        height: 48, // tinggi button
+                        child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFF48668),
                             shape: RoundedRectangleBorder(
@@ -498,9 +513,8 @@ void showNominalDetailPopup(
                                       ? cleanDisplay
                                       : nominal;
 
-                                  // 🟡 Gunakan context dialogContext agar popup tidak hilang
-                                  await _submitTransaction(dialogContext, selectedStatus,
-                                      sendNominal, userId, roomId);
+                                  await _submitTransaction(
+                                      dialogContext, selectedStatus, sendNominal, userId, roomId);
 
                                   setState(() => isSending = false);
                                 },
@@ -514,12 +528,28 @@ void showNominalDetailPopup(
                               : const Text("Kirim",
                                   style: TextStyle(color: Colors.white)),
                         ),
-                        TextButton(
+                      ),
+                      const SizedBox(width: 8), // jarak tipis antar button
+                      SizedBox(
+                        width: 120, // lebar button "Tutup" sama dengan "Kirim"
+                        height: 48,
+                        child: TextButton(
                           onPressed: () => Navigator.pop(dialogContext),
-                          child: const Text("Tutup"),
+                          style: TextButton.styleFrom(
+                            backgroundColor: const Color(0xFFF48668),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16)),
+                          ),
+                          child: const Text(
+                            "Tutup",
+                            style: TextStyle(
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
                   ],
                 ),
               ),
@@ -536,33 +566,73 @@ void showNominalDetailPopup(
 
 
 
-  Future<void> _submitTransaction(BuildContext context, String status, String nominal, int userId, int roomId) async {
-    final url = Uri.parse(status == 'Pemasukan' ? '$baseUrl/pemasukan' : '$baseUrl/pengeluaran');
+Future<void> _submitTransaction(
+  BuildContext context,
+  String status,
+  String nominal,
+  int userId,
+  int roomId,
+) async {
+  final url = Uri.parse(
+    status == 'Pemasukan'
+        ? '$baseUrl/pemasukan'
+        : '$baseUrl/pengeluaran',
+  );
 
-    int parseNominal(String nominal) {
-      String cleaned = nominal.replaceAll(RegExp(r'[^\d,]'), '').replaceAll('.', '');
-      if (cleaned.contains(',')) cleaned = cleaned.split(',')[0];
-      return int.tryParse(cleaned) ?? 0;
-    }
-
-    final amount = parseNominal(nominal);
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'user_id': userId, 'room_id': roomId, 'amount': amount}),
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        showPopup(context, "Transaksi berhasil dikirim!", true);
-      } else {
-        showPopup(context, "Gagal kirim transaksi \n${response.body}", false);
-      }
-    } catch (e) {
-      showPopup(context, "Kesalahan koneksi \n$e", false);
-    }
+  // 🔹 Parsing nominal string → int
+  int parseNominal(String nominal) {
+    String cleaned = nominal.replaceAll(RegExp(r'[^\d]'), '');
+    return int.tryParse(cleaned) ?? 0;
   }
+
+  final amount = parseNominal(nominal);
+
+  if (amount <= 0) {
+    showPopup(context, "Nominal tidak valid atau kosong!", false);
+    return;
+  }
+
+  try {
+    final body = jsonEncode({
+      'user_id': userId,
+      'room_id': roomId,
+      'amount': amount,
+    });
+
+    print("📤 Sending transaction: $body to $url");
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    print("📥 Response: ${response.statusCode} - ${response.body}");
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      // ✅ Tambahkan notifikasi lokal
+      hasNewNotification.value = true;
+      newDataList.add({
+        "judul": status == 'Pemasukan'
+            ? "Pemasukan Baru"
+            : "Pengeluaran Baru",
+        "detail":
+            "Transaksi $status sebesar Rp$nominal berhasil ditambahkan.",
+      });
+
+      showPopup(context, "Transaksi berhasil dikirim!", true);
+    } else {
+      showPopup(
+        context,
+        "Gagal mengirim transaksi.\nKode: ${response.statusCode}\n${response.body}",
+        false,
+      );
+    }
+  } catch (e) {
+    showPopup(context, "Kesalahan koneksi atau server tidak merespons.\n$e", false);
+  }
+}
+
 
 Future<List<String>?> scanStruk() async {
   try {
@@ -719,7 +789,21 @@ Future<bool> simpanTransaksi({
     );
 
     final data = jsonDecode(response.body);
-    return response.statusCode == 200 && data["status"] == "success";
+    final success = response.statusCode == 200 && data["status"] == "success";
+
+    if (success) {
+      // ✅ Tambahkan notifikasi baru
+      hasNewNotification.value = true;
+
+      newDataList.add({
+        "title": "Transaksi Baru",
+        "message":
+            "Transaksi $jenis (${kategori}) sebesar Rp ${parseNominal(nominal)} berhasil disimpan.",
+        "timestamp": DateTime.now().toIso8601String(),
+      });
+    }
+
+    return success;
   } catch (e) {
     print("Error Simpan Transaksi: $e");
     return false;

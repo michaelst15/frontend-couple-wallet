@@ -145,48 +145,76 @@ class _RegisterPageState extends State<RegisterPage> {
 
                             // Dropdown Room
                             DropdownButtonFormField<String>(
-                              value: _selectedRoom,
-                              decoration: const InputDecoration(
-                                labelText: "Pilih Room",
-                                prefixIcon: Icon(Icons.favorite_outline),
-                              ),
-                              items: rooms.map<DropdownMenuItem<String>>((room) {
-                                final status = room["status"] ?? "unknown";
-                                final color = status.toLowerCase() == "max"
-                                    ? Colors.red
-                                    : Colors.green;
-                                return DropdownMenuItem<String>(
-                                  value: room["room_name"],
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(room["room_name"]),
-                                      Container(
-                                        width: 14,
-                                        height: 14,
-                                        decoration: BoxDecoration(
-                                          color: color,
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (v) {
-                                final selected = rooms.firstWhereOrNull(
-                                  (r) => r["room_name"] == v,
-                                );
-                                if (selected != null &&
-                                    selected["status"]?.toLowerCase() == "max") {
-                                  controller.showPopup(context, "Room sudah penuh", false);
-                                  return;
-                                }
-                                setState(() => _selectedRoom = v);
-                              },
-                              validator: (v) => v == null ? "Pilih room dulu" : null,
+                            value: _selectedRoom,
+                            decoration: const InputDecoration(
+                              labelText: "Pilih Room",
+                              prefixIcon: Icon(Icons.favorite_outline),
                             ),
-                            const SizedBox(height: 30),
+                            items: rooms.map<DropdownMenuItem<String>>((room) {
+                              final status = room["status"] ?? "unknown";
+                              final color = status.toLowerCase() == "max" ? Colors.red : Colors.green;
+
+                              return DropdownMenuItem<String>(
+                                value: room["room_name"],
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(room["room_name"]),
+                                    const SizedBox(width: 8), // jarak aman antar teks dan bulatan
+                                    Container(
+                                      width: 14,
+                                      height: 14,
+                                      decoration: BoxDecoration(
+                                        color: color,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+
+                            // 🟢 Tambahkan ini agar tampilan terpilih juga pakai layout sama
+                            selectedItemBuilder: (context) {
+                              return rooms.map((room) {
+                                final status = room["status"] ?? "unknown";
+                                final color = status.toLowerCase() == "max" ? Colors.red : Colors.green;
+
+                                return Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(room["room_name"]),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      width: 14,
+                                      height: 14,
+                                      decoration: BoxDecoration(
+                                        color: color,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }).toList();
+                            },
+
+                            onChanged: (v) {
+                              final selected = rooms.firstWhereOrNull(
+                                (r) => r["room_name"] == v,
+                              );
+                              if (selected != null &&
+                                  selected["status"]?.toLowerCase() == "max") {
+                                controller.showPopup(context, "Room sudah penuh", false);
+                                return;
+                              }
+                              setState(() => _selectedRoom = v);
+                            },
+
+                            validator: (v) => v == null ? "Pilih room dulu" : null,
+                          ),
+
+
+                              const SizedBox(height: 30),
 
                             // Tombol Daftar
                             SizedBox(

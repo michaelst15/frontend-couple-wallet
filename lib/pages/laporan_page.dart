@@ -71,8 +71,8 @@ double _toDouble(dynamic val) {
             children: [
               // 🔹 Ringkasan Keuangan
               Text(
-                "Ringkasan Keuangan",
-                style: GoogleFonts.lobster(
+                "Transaksi Non Bank",
+                style: GoogleFonts.abel(
                   fontSize: 22,
                   fontWeight: FontWeight.w600,
                   color: const Color.fromARGB(255, 99, 98, 98),
@@ -94,7 +94,7 @@ double _toDouble(dynamic val) {
               // 🔹 Grafik
               Text(
                 "Perbandingan Pemasukan & Pengeluaran (Harian)",
-                style: GoogleFonts.lobster(
+                style: GoogleFonts.abel(
                   fontSize: 22,
                   fontWeight: FontWeight.w600,
                   color: const Color.fromARGB(255, 99, 98, 98),
@@ -174,45 +174,101 @@ double _toDouble(dynamic val) {
               const SizedBox(height: 30),
 
               // 🔹 Rincian Laporan
-              Text(
-                "Rincian Laporan Pengguna",
-                style: GoogleFonts.lobster(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
-                  color: const Color.fromARGB(255, 99, 98, 98),
-                ),
-              ),
-              const SizedBox(height: 16),
-             Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Tampilkan semua pemasukan
-                ...pemasukanHarian.map((item) {
-                  final val = _parseDouble(item['pemasukan']);
-                  final tanggal = item['tanggal']?.toString() ?? "-";
-                  return _buildDetailCardWithIcon(
-                    icon: Icons.arrow_downward_rounded,
-                    iconColor: Colors.green,
-                    title: "Pemasukan: $tanggal",
-                    value: val,
-                    color: Colors.green,
-                  );
-                }).toList(),
+              // 🔹 Rincian Laporan
+                  Text(
+                    "Rincian Laporan Pengguna",
+                    style: GoogleFonts.abel(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      color: const Color.fromARGB(255, 99, 98, 98),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
-                // Tampilkan semua pengeluaran
-                ...pengeluaranHarian.map((item) {
-                  final val = _parseDouble(item['pengeluaran']);
-                  final tanggal = item['tanggal']?.toString() ?? "-";
-                  return _buildDetailCardWithIcon(
-                    icon: Icons.arrow_upward_rounded,
-                    iconColor: Colors.redAccent,
-                    title: "Pengeluaran: $tanggal",
-                    value: val,
-                    color: Colors.redAccent,
-                  );
-                }).toList(),
-              ],
-            ),
+                  Obx(() {
+                    final pemasukanHarian = controller.pemasukanHarian;
+                    final pengeluaranHarian = controller.pengeluaranHarian;
+                    final semuaData = [
+                      ...pemasukanHarian,
+                      ...pengeluaranHarian,
+                    ];
+
+                    if (semuaData.isEmpty) {
+                      // 📨 Tidak ada data transaksi
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 40),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(Icons.inbox, size: 48, color: Colors.grey),
+                              SizedBox(height: 8),
+                              Text(
+                                "Belum ada transaksi",
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    // 🔁 Jika lebih dari 3 data, buat scrollable container
+                    final isScrollable = semuaData.length > 3;
+                    final visibleHeight = isScrollable ? 350.0 : null;
+
+                    // Tambahkan controller untuk scroll internal
+                    final ScrollController innerScrollController = ScrollController();
+
+                    final content = Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ...pemasukanHarian.map((item) {
+                          final val = _parseDouble(item['pemasukan']);
+                          final tanggal = item['tanggal']?.toString() ?? "-";
+                          return _buildDetailCardWithIcon(
+                            icon: Icons.arrow_downward_rounded,
+                            iconColor: Colors.green,
+                            title: "Pemasukan: $tanggal",
+                            value: val,
+                            color: Colors.green,
+                          );
+                        }).toList(),
+                        ...pengeluaranHarian.map((item) {
+                          final val = _parseDouble(item['pengeluaran']);
+                          final tanggal = item['tanggal']?.toString() ?? "-";
+                          return _buildDetailCardWithIcon(
+                            icon: Icons.arrow_upward_rounded,
+                            iconColor: Colors.redAccent,
+                            title: "Pengeluaran: $tanggal",
+                            value: val,
+                            color: Colors.redAccent,
+                          );
+                        }).toList(),
+                      ],
+                    );
+
+                    if (isScrollable) {
+                      // 🧭 Batasi tinggi dan beri ScrollController sendiri
+                      return Container(
+                        constraints: BoxConstraints(maxHeight: visibleHeight!),
+                        child: Scrollbar(
+                          controller: innerScrollController,
+                          thumbVisibility: true,
+                          radius: const Radius.circular(10),
+                          child: SingleChildScrollView(
+                            controller: innerScrollController,
+                            child: content,
+                          ),
+                        ),
+                      );
+                    } else {
+                      // ✨ Kalau data <= 3, tampilkan biasa
+                      return content;
+                    }
+                  }),
+
+
 
             ],
           );
