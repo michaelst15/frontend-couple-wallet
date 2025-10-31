@@ -138,8 +138,25 @@ class _MainPageState extends State<MainPage> {
           totalTransaksi: pemasukanHarian.length + pengeluaranHarian.length,
         ),
         TransaksiPage(),
-       LaporanPage(),
-        PengaturanPage(),
+        LaporanPage(),
+        PengaturanPage(
+          fullData: data,
+          userId: widget.userId,
+          userName: widget.userName,
+          email: widget.email,
+          roomId: widget.roomId,
+          roomName: roomName,
+          members: memberList,
+          loginTime: widget.loginTime,
+          totalPemasukanUser: totalPemasukanUser,
+          totalPengeluaranUser: totalPengeluaranUser,
+          totalPemasukanRoom: totalPemasukanRoom,
+          totalPengeluaranRoom: totalPengeluaranRoom,
+          totalRoomSaldo: totalRoomSaldo,
+          tanggalBuatRoom: tanggalBuatRoom,
+          terakhirUpdate: data["time"] ?? "-",
+          totalTransaksi: pemasukanHarian.length + pengeluaranHarian.length,
+        ),
       ];
 
       return Scaffold(

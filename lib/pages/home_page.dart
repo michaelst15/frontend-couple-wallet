@@ -95,7 +95,24 @@ void _onTabTapped(int index) async {
         ),
         TransaksiPage(),
         LaporanPage(),
-       PengaturanPage(),
+       PengaturanPage(
+          fullData: fullData,
+          userId: widget.userId,
+          userName: widget.userName,
+          email: widget.email,
+          roomId: widget.roomId,
+          roomName: fullData["room_name"] ?? "-",
+          members: widget.members?.map((m) => m.toString()).toList() ?? [],
+          loginTime: widget.loginTime ?? "-",
+          totalPemasukanUser: fullData["total_pemasukan_user"] ?? 0,
+          totalPengeluaranUser: fullData["total_pengeluaran_user"] ?? 0,
+          totalPemasukanRoom: fullData["total_pemasukan_room"] ?? 0,
+          totalPengeluaranRoom: fullData["total_pengeluaran_room"] ?? 0,
+          totalRoomSaldo: fullData["total_room_saldo"] ?? 0,
+          totalTransaksi: fullData["total_transaksi"] ?? 0,
+          tanggalBuatRoom: fullData["tanggal_buat_room"] ?? "-",
+          terakhirUpdate: fullData["time"] ?? "-",
+       ),
       ];
 
       return Scaffold(

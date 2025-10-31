@@ -48,6 +48,7 @@ dependencies:
   biometric_signature: ^8.0.0
   lottie: ^3.3.2
   typewritertext: ^3.0.9
+  table_calendar: ^3.2.0
 
 dev_dependencies:
   flutter_test:

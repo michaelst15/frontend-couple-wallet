@@ -37,6 +37,7 @@ class FullDataController extends GetxController {
   var hasNewNotification = false.obs;
   var newDataList = <Map<String, dynamic>>[].obs;
 
+
   void setFullData(Map<String, dynamic> data) {
     fullData.value = Map<String, dynamic>.from(data);
 
@@ -809,4 +810,71 @@ Future<bool> simpanTransaksi({
     return false;
   }
 }
+
+// =========================================================
+// 🔹 FETCH SELURUH TRANSAKSI (user_transactions + other_transaction)
+// =========================================================
+// RxList yang sudah ada
+RxList<Map<String, dynamic>> seluruhTransaksi = <Map<String, dynamic>>[].obs;
+
+// 🔹 Helper untuk mengambil transaksi 'other' berdasarkan tanggal
+List<Map<String, dynamic>> getOtherTransactionsByDate(DateTime date) {
+  DateTime dateKey = DateTime(date.year, date.month, date.day);
+
+  return seluruhTransaksi.where((trx) {
+    if (trx['source'] != 'other' || trx['tanggal_update'] == null) return false;
+
+    DateTime trxDate = DateTime.parse(trx['tanggal_update']);
+    DateTime trxKey = DateTime(trxDate.year, trxDate.month, trxDate.day);
+
+    return trxKey == dateKey;
+  }).toList();
 }
+
+Future<List<Map<String, dynamic>>> fetchSeluruhTransaksi() async {
+  if (fullData['room_id'] == null) return [];
+
+  try {
+    final uri = Uri.parse("$baseUrl/seluruh-transaksi").replace(
+      queryParameters: {
+        "room_id": fullData['room_id'].toString(),
+      },
+    );
+
+    print("🌐 Fetch Seluruh Transaksi: $uri");
+
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data["status"] == "success" && data["data"] != null) {
+        List<Map<String, dynamic>> listTransaksi =
+            List<Map<String, dynamic>>.from(data["data"]);
+
+        // 🔹 Update RxList sehingga UI reaktif
+        seluruhTransaksi.value = listTransaksi;
+
+        print("📦 Total transaksi: ${listTransaksi.length}");
+        return listTransaksi;
+      } else {
+        print("⚠️ Response sukses tapi data kosong");
+      }
+    } else {
+      print("❌ Gagal fetch seluruh transaksi: ${response.statusCode}");
+    }
+
+    // kosongkan seluruhTransaksi kalau gagal
+    seluruhTransaksi.value = [];
+    return [];
+  } catch (e) {
+    print("Error fetchSeluruhTransaksi: $e");
+    seluruhTransaksi.value = [];
+    return [];
+  }
+}
+
+
+
+
+}
+
