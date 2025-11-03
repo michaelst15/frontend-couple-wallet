@@ -85,11 +85,58 @@ void _processOtherTransactions(List<Map<String, dynamic>> listTransaksi) {
     }
   }
 
+  for (var trx in listTransaksi) {
+  print("🔹 Data transaksi: user=${trx['user']}, source=${trx['source']}, tanggal=${trx['tanggal_update']}");
+}
+
+
   print("Transaksi 'other' berdasarkan tanggal:");
   otherTransactionsByDate.forEach((key, value) {
     print("$key : $value");
   });
 }
+
+Map<String, Map<DateTime, List<Map<String, dynamic>>>> transaksiByUserAndDate = {
+  'bank': {},
+  'nonbank': {},
+  'other': {},
+};
+
+// Setelah fetchSeluruhTransaksi
+void _processAllTransactions(List<Map<String, dynamic>> listTransaksi) {
+  // Reset semua map
+  transaksiByUserAndDate.forEach((key, value) => value.clear());
+
+  for (var trx in listTransaksi) {
+    // Pastikan data memiliki user dan tanggal_update
+    if (trx['user'] != null && trx['tanggal_update'] != null) {
+      String user = trx['user']; // misal: "bank", "nonbank", "other"
+      DateTime tanggal = DateTime.parse(trx['tanggal_update']);
+      DateTime dateKey = DateTime(tanggal.year, tanggal.month, tanggal.day);
+
+      // Jika belum ada map untuk user tersebut, buat baru
+      transaksiByUserAndDate.putIfAbsent(user, () => {});
+
+      // Tambahkan list kosong jika tanggal belum ada
+      if (!transaksiByUserAndDate[user]!.containsKey(dateKey)) {
+        transaksiByUserAndDate[user]![dateKey] = [];
+      }
+
+      // Masukkan transaksi ke tanggal yang sesuai
+      transaksiByUserAndDate[user]![dateKey]!.add(trx);
+    }
+  }
+
+  // Debug: tampilkan hasil di console
+  print("🔹 Transaksi berdasarkan user dan tanggal:");
+  transaksiByUserAndDate.forEach((user, dateMap) {
+    print("User: $user");
+    dateMap.forEach((date, listTrx) {
+      print("  $date : ${listTrx.length} transaksi");
+    });
+  });
+}
+
 
 
   @override
@@ -116,6 +163,8 @@ void _processOtherTransactions(List<Map<String, dynamic>> listTransaksi) {
   controller.fetchSeluruhTransaksi().then((listTransaksi) {
     print("Seluruh transaksi berhasil diambil!");
     print(listTransaksi);
+    print("Sample transaksi: ${listTransaksi.take(3).toList()}");
+
 
     // 🔹 Ambil data 'other' untuk kalender
     _processOtherTransactions(listTransaksi);
@@ -370,14 +419,27 @@ void _processOtherTransactions(List<Map<String, dynamic>> listTransaksi) {
                                                               ),
                                                             ),
                                                             Padding(
-                                                              padding: const EdgeInsets.all(8.0),
-                                                              child: ElevatedButton(
-                                                                onPressed: () {
-                                                                  Navigator.pop(context, tempSelected);
-                                                                },
-                                                                child: const Text("Pilih"),
+                                                                padding: const EdgeInsets.all(8.0),
+                                                                child: Row(
+                                                                  mainAxisAlignment: MainAxisAlignment.end, // posisi tombol di kanan
+                                                                  children: [
+                                                                    TextButton(
+                                                                      onPressed: () {
+                                                                        Navigator.pop(context); // tombol cancel tanpa hasil
+                                                                      },
+                                                                      child: const Text("Cancel"),
+                                                                    ),
+                                                                    const SizedBox(width: 8), // jarak antar tombol
+                                                                    TextButton(
+                                                                      onPressed: () {
+                                                                        Navigator.pop(context, tempSelected); // kirim hasil pilihan
+                                                                      },
+                                                                      child: const Text("OK"),
+                                                                    ),
+                                                                  ],
+                                                                ),
                                                               ),
-                                                            ),
+
                                                           ],
                                                         ),
                                                       );
@@ -399,7 +461,7 @@ void _processOtherTransactions(List<Map<String, dynamic>> listTransaksi) {
                                               Text(
                                                 selectedDate != null
                                                     ? "${selectedDate!.day}-${selectedDate!.month}-${selectedDate!.year}"
-                                                    : "Check",
+                                                    : "Pilih",
                                                 style: GoogleFonts.poppins(
                                                   fontSize: 14.5,
                                                   fontWeight: FontWeight.w600,
@@ -630,20 +692,12 @@ void _processOtherTransactions(List<Map<String, dynamic>> listTransaksi) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 void _showUbahJumlahBankDialog() {
   String selectedStatus = "Pemasukan";
+  DateTime? selectedDate;
   final TextEditingController _jumlahBankController = TextEditingController();
+  Map<String, dynamic>? selectedTransaction;
+  bool isLoading = false;
 
   showDialog(
     context: context,
@@ -651,155 +705,428 @@ void _showUbahJumlahBankDialog() {
     builder: (context) {
       return StatefulBuilder(
         builder: (context, setState) {
+          final Color statusColor = const Color(0xFFF48668);
+
+          // 🔹 Filter transaksi BANK sesuai tanggal
+          List<Map<String, dynamic>> transactionsForDate = [];
+          if (selectedDate != null) {
+            transactionsForDate = controller.seluruhTransaksiBank
+            .where((trx) {
+              if (trx['tanggal_update'] == null) return false;
+
+              final trxDate = DateTime.parse(trx['tanggal_update']);
+              return trxDate.year == selectedDate!.year &&
+                    trxDate.month == selectedDate!.month &&
+                    trxDate.day == selectedDate!.day;
+            })
+            .toList();
+
+          }
+
+          print("📅 Tanggal dipilih: $selectedDate");
+          print("💳 Jumlah transaksi bank untuk tanggal ini: ${transactionsForDate.length}");
+          if (transactionsForDate.isNotEmpty) {
+            print("🧾 Sample transaksi bank: ${transactionsForDate.first}");
+          }
+
+          // 🟢 Popup hasil sukses/gagal
+          void showResultPopup(bool success) {
+            showDialog(
+              context: context,
+              barrierDismissible: true,
+              builder: (context) {
+                return Dialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(25),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          success ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                          color: success ? statusColor : Colors.red,
+                          size: 60,
+                        ),
+                        const SizedBox(height: 15),
+                        Text(
+                          success
+                              ? "Perubahan berhasil dilakukan"
+                              : "Perubahan gagal dilakukan",
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: statusColor,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 15),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: statusColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text("Tutup", style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          }
+
           return AlertDialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
-            title: Text(
-              "Ubah Jumlah",
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFFF48668),
-              ),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 🔹 Baris Status tanpa border
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Status:",
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Text(
+                      "Ubah Jumlah Transaksi Bank",
                       style: GoogleFonts.poppins(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: statusColor,
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    DropdownButton<String>(
-                      value: selectedStatus,
-                      underline: const SizedBox(),
-                      icon: const Icon(Icons.arrow_drop_down),
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: Colors.grey.shade800,
-                      ),
-                      items: ["Pemasukan", "Pengeluaran"]
-                          .map((status) => DropdownMenuItem(
-                                value: status,
-                                child: Text(status),
-                              ))
-                          .toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() => selectedStatus = value);
-                        }
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // 🔹 Input Jumlah dengan prefix Rp
-                TextField(
-                  controller: _jumlahBankController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: "Masukkan jumlah baru",
-                    labelStyle: GoogleFonts.poppins(fontSize: 13.5),
-                    prefixText: "Rp ",
-                    prefixStyle: GoogleFonts.poppins(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade700,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    focusedBorder: const OutlineInputBorder(
-                      borderSide:
-                          BorderSide(color: Color(0xFFF48668), width: 1.5),
                     ),
                   ),
-                ),
-                const SizedBox(height: 25),
+                  const SizedBox(height: 15),
 
-                // 🔹 Tombol sejajar
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Tombol Kirim
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          final jumlah = _jumlahBankController.text.trim();
-                          if (jumlah.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content:
-                                    Text("Masukkan jumlah terlebih dahulu"),
-                              ),
-                            );
-                            return;
-                          }
+                  // 🔹 Dropdown Jenis + Tombol Refresh
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            "Jenis:",
+                            style: GoogleFonts.poppins(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          DropdownButton<String>(
+                            value: selectedStatus,
+                            underline: const SizedBox(),
+                            icon: const Icon(Icons.arrow_drop_down),
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.grey.shade800,
+                            ),
+                            items: ["Pemasukan", "Pengeluaran"]
+                                .map((status) => DropdownMenuItem(
+                                      value: status,
+                                      child: Text(status),
+                                    ))
+                                .toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() => selectedStatus = value);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+
+                      // 🔄 Tombol Refresh Data
+                      IconButton(
+                        icon: const Icon(Icons.refresh, color: Color(0xFFF48668)),
+                        tooltip: "Refresh Data",
+                        onPressed: () async {
+                          await controller.fetchSeluruhTransaksi();
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                "BANK — Status: $selectedStatus | Jumlah: Rp $jumlah dikirim",
+                          const SnackBar(
+                            content: Text(
+                              "Data transaksi berhasil diperbarui.",
+                              style: TextStyle(
+                                color: Colors.white, // teks tetap kontras
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
+                            backgroundColor: Color(0xFFF48668), // warna latar belakang
+                            duration: Duration(seconds: 2),
+                            behavior: SnackBarBehavior.floating, // tampil sedikit di atas
+                            margin: EdgeInsets.all(12), // jarak dari tepi
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.all(Radius.circular(12)), // sudut membulat
+                            ),
+                          ),
                           );
-                          Navigator.pop(context);
-                          _jumlahBankController.clear();
+                          setState(() {});
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF48668),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: Text(
-                          "Kirim",
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
                       ),
-                    ),
-                    const SizedBox(width: 15),
+                    ],
+                  ),
 
-                    // Tombol Tutup
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _jumlahBankController.clear();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFFF48668),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                  const SizedBox(height: 12),
+
+                  // 🔹 Pilih Tanggal
+                  Row(
+                    children: [
+                      Text(
+                        "Tanggal:",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w500,
                         ),
-                        child: Text(
-                          "Tutup",
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      ),
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: selectedDate ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2100),
+                          );
+                          if (picked != null) {
+                            setState(() {
+                              selectedDate = picked;
+                              selectedTransaction = null;
+                            });
+                          }
+                        },
+                        child: Row(
+                          children: [
+                            Text(
+                              selectedDate != null
+                                  ? "${selectedDate!.day}-${selectedDate!.month}-${selectedDate!.year}"
+                                  : "Pilih",
+                              style: GoogleFonts.poppins(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w600,
+                                color: statusColor,
+                              ),
+                            ),
+                            const SizedBox(width: 3),
+                            Icon(Icons.arrow_drop_down, color: statusColor),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // 🔹 Input Jumlah
+                  TextField(
+                    controller: _jumlahBankController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: "Masukkan jumlah baru",
+                      labelStyle: GoogleFonts.poppins(fontSize: 13.5),
+                      prefixText: "Rp ",
+                      prefixStyle: GoogleFonts.poppins(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black45,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: statusColor, width: 1.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // 🔹 Daftar Transaksi Bank
+                  if (transactionsForDate.isNotEmpty)
+                    SizedBox(
+                      height: 180, // ✅ scroll jika data banyak
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Transaksi Bank:",
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            ...transactionsForDate.map((trx) {
+                              final bool isSelected = selectedTransaction != null &&
+                                  selectedTransaction!['id'] == trx['id'];
+
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    selectedTransaction = trx;
+
+                                    // Ambil otomatis nominal dari field yang tersedia
+                                    if (trx.containsKey('pemasukan')) {
+                                      _jumlahBankController.text = trx['pemasukan'].toString();
+                                    } else if (trx.containsKey('pengeluaran')) {
+                                      _jumlahBankController.text = trx['pengeluaran'].toString();
+                                    } else {
+                                      _jumlahBankController.text = '';
+                                    }
+                                  });
+                                },
+
+
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.all(8),
+                                  margin: const EdgeInsets.only(bottom: 6),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? const Color(0xFFFFF9C4)
+                                        : Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? const Color(0xFFF1C40F)
+                                          : Colors.grey.shade300,
+                                      width: 1.2,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        (() {
+                                          if (trx.containsKey('pemasukan')) {
+                                            return "Pemasukan: Rp ${trx['pemasukan']}";
+                                          } else if (trx.containsKey('pengeluaran')) {
+                                            return "Pengeluaran: Rp ${trx['pengeluaran']}";
+                                          } else {
+                                            return "Transaksi: Rp 0";
+                                          }
+                                        })(),
+                                        style: GoogleFonts.poppins(fontSize: 13.5),
+                                      ),
+                                      Flexible(
+                                        child: Text(
+                                          trx['keterangan'] ?? '',
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade700,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                ),
+                              );
+                            }).toList(),
+                          ],
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ],
+
+                  const SizedBox(height: 15),
+
+                  // 🔹 Tombol Kirim & Tutup
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: isLoading
+                              ? null
+                              : () async {
+                                  if (selectedTransaction == null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text("Pilih transaksi yang ingin diubah!"),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  final jumlah = double.tryParse(
+                                          _jumlahBankController.text.trim()) ??
+                                      0;
+                                  if (jumlah <= 0) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text("Masukkan jumlah yang valid!"),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  final id = selectedTransaction!['id'];
+
+                                  setState(() => isLoading = true);
+                                  final success = await controller.editTransaksiByID(
+                                    id: id,
+                                    jenis: selectedStatus,
+                                    nominal: jumlah,
+                                    context: context,
+                                  );
+                                  setState(() => isLoading = false);
+
+                                  Navigator.pop(context);
+                                  showResultPopup(success);
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: statusColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  "Kirim",
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _jumlahBankController.clear();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: statusColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: Text(
+                            "Tutup",
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -807,6 +1134,7 @@ void _showUbahJumlahBankDialog() {
     },
   );
 }
+
 
 
 

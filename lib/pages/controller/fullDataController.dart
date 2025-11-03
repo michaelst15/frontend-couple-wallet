@@ -791,6 +791,7 @@ void showPopup(BuildContext context, String message, bool success) {
   }
 }
 
+
 // =========================================================
 // 🔹 SIMPAN TRANSAKSI
 // =========================================================
@@ -850,49 +851,78 @@ Future<bool> simpanTransaksi({
 // 🔹 FETCH SELURUH TRANSAKSI (user_transactions + other_transaction)
 // =========================================================
 // RxList yang sudah ada
+// ===============================
+// 🔹 Variabel Observables
+// ===============================
 RxList<Map<String, dynamic>> seluruhTransaksi = <Map<String, dynamic>>[].obs;
+RxList<Map<String, dynamic>> seluruhTransaksiBank = <Map<String, dynamic>>[].obs;
 
- final Rx<DateTime?> selectedDate = Rx<DateTime?>(null);
+final Rx<DateTime?> selectedDate = Rx<DateTime?>(null);
 final RxString selectedStatus = "Pemasukan".obs;
 
-  // ===============================
-  // 🔹 Ambil transaksi "other" per tanggal
-  // ===============================
-  List<Map<String, dynamic>> getOtherTransactionsByDate(DateTime date) {
-    DateTime dateKey = DateTime(date.year, date.month, date.day);
-    
+// ===============================
+// 🔹 Ambil transaksi "other" per tanggal
+// ===============================
+List<Map<String, dynamic>> getOtherTransactionsByDate(DateTime date) {
+  DateTime dateKey = DateTime(date.year, date.month, date.day);
 
-    return seluruhTransaksi.where((trx) {
-      if (trx['source'] != 'other' || trx['tanggal_update'] == null) return false;
+  return seluruhTransaksi.where((trx) {
+    final source = trx['source'] ?? trx['user'] ?? '';
+    if (source.toLowerCase() != 'other' || trx['tanggal_update'] == null) return false;
 
+    try {
       DateTime trxDate = DateTime.parse(trx['tanggal_update']);
       DateTime trxKey = DateTime(trxDate.year, trxDate.month, trxDate.day);
-
       return trxKey == dateKey;
-    }).toList();
-  }
+    } catch (e) {
+      return false;
+    }
+  }).toList();
+}
 
-  // ===============================
-  // 🔹 Update transaksi 'other' berdasarkan tanggal
-  // ===============================
-  void updateTransaksiNonBank({
-    required DateTime tanggal,
-    required String status,
-    required double nominalBaru,
-  }) {
-    DateTime dateKey = DateTime(tanggal.year, tanggal.month, tanggal.day);
+// ===============================
+// 🔹 Ambil transaksi NON-"other" (misal BANK) per tanggal
+// ===============================
+List<Map<String, dynamic>> getTransaksiNonOtherByDate(DateTime date) {
+  final DateTime dateKey = DateTime(date.year, date.month, date.day);
 
-    bool updated = false;
+  return seluruhTransaksiBank.where((trx) {
+    if (trx['tanggal_update'] == null) return false;
 
-    for (int i = 0; i < seluruhTransaksi.length; i++) {
-      var trx = seluruhTransaksi[i];
+    final source = trx['user'] ?? trx['source'] ?? '';
+    if (source.toLowerCase() == 'other') return false;
 
-      if (trx['source'] == 'other' && trx['tanggal_update'] != null) {
+    try {
+      final trxDate = DateTime.parse(trx['tanggal_update']);
+      final trxKey = DateTime(trxDate.year, trxDate.month, trxDate.day);
+      return trxKey == dateKey;
+    } catch (e) {
+      return false;
+    }
+  }).toList();
+}
+
+// ===============================
+// 🔹 Update transaksi "other" berdasarkan tanggal
+// ===============================
+void updateTransaksiNonBank({
+  required DateTime tanggal,
+  required String status,
+  required double nominalBaru,
+}) {
+  DateTime dateKey = DateTime(tanggal.year, tanggal.month, tanggal.day);
+  bool updated = false;
+
+  for (int i = 0; i < seluruhTransaksi.length; i++) {
+    var trx = seluruhTransaksi[i];
+    final source = trx['source'] ?? trx['user'] ?? '';
+
+    if (source.toLowerCase() == 'other' && trx['tanggal_update'] != null) {
+      try {
         DateTime trxDate = DateTime.parse(trx['tanggal_update']);
         DateTime trxKey = DateTime(trxDate.year, trxDate.month, trxDate.day);
 
         if (trxKey == dateKey) {
-          // 🔸 Update data transaksi
           seluruhTransaksi[i] = {
             ...trx,
             'nominal': nominalBaru,
@@ -901,62 +931,73 @@ final RxString selectedStatus = "Pemasukan".obs;
           };
           updated = true;
         }
-      }
-    }
-
-    // 🔸 Paksa RxList notifikasi ulang ke UI
-    if (updated) {
-      seluruhTransaksi.refresh(); // ⬅️ ini yang memicu UI update otomatis
-      print("🔁 Transaksi non-bank tanggal $dateKey berhasil diperbarui.");
-    } else {
-      print("⚠️ Tidak ditemukan transaksi 'other' di tanggal $dateKey.");
+      } catch (_) {}
     }
   }
 
-  // ===============================
-  // 🔹 Fetch seluruh transaksi dari server
-  // ===============================
-  Future<List<Map<String, dynamic>>> fetchSeluruhTransaksi() async {
-    if (fullData['room_id'] == null) return [];
+  if (updated) {
+    seluruhTransaksi.refresh();
+    seluruhTransaksiBank.refresh(); // <-- harus pakai () agar benar-benar refresh
+    print("🔁 Transaksi non-bank tanggal $dateKey berhasil diperbarui.");
+  } else {
+    print("⚠️ Tidak ditemukan transaksi 'other' di tanggal $dateKey.");
+  }
+}
 
-    try {
-      final uri = Uri.parse("$baseUrl/seluruh-transaksi").replace(
-        queryParameters: {
-          "room_id": fullData['room_id'].toString(),
-        },
-      );
+// ===============================
+// 🔹 Fetch seluruh transaksi dari server
+// ===============================
+Future<List<Map<String, dynamic>>> fetchSeluruhTransaksi() async {
+  if (fullData['room_id'] == null) return [];
 
-      print("🌐 Fetch Seluruh Transaksi: $uri");
+  try {
+    final uri = Uri.parse("$baseUrl/seluruh-transaksi").replace(
+      queryParameters: {
+        "room_id": fullData['room_id'].toString(),
+      },
+    );
 
-      final response = await http.get(uri);
+    print("🌐 Fetch Seluruh Transaksi: $uri");
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data["status"] == "success" && data["data"] != null) {
-          List<Map<String, dynamic>> listTransaksi =
-              List<Map<String, dynamic>>.from(data["data"]);
+    final response = await http.get(uri);
 
-          // 🔹 Update RxList supaya UI reaktif
-          seluruhTransaksi.value = listTransaksi;
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data["status"] == "success" && data["data"] != null) {
+        List<Map<String, dynamic>> listTransaksi =
+            List<Map<String, dynamic>>.from(data["data"]);
 
-          print("📦 Total transaksi: ${listTransaksi.length}");
-          return listTransaksi;
-        } else {
-          print("⚠️ Response sukses tapi data kosong");
-        }
+        // 🔹 Update RxList utama
+        seluruhTransaksi.value = listTransaksi;
+
+        // 🔹 Filter hanya transaksi bank ke list khusus
+        seluruhTransaksiBank.value = listTransaksi.where((trx) {
+          final source = (trx['source'] ?? '').toString().toLowerCase();
+          return source == 'bank' || source == 'user';
+        }).toList();
+
+        print("📦 Total transaksi: ${listTransaksi.length}");
+        print("🏦 Total transaksi bank: ${seluruhTransaksiBank.length}");
+
+        return listTransaksi;
       } else {
-        print("❌ Gagal fetch seluruh transaksi: ${response.statusCode}");
+        print("⚠️ Response sukses tapi data kosong");
       }
-
-      // 🔹 Kosongkan jika gagal
-      seluruhTransaksi.clear();
-      return [];
-    } catch (e) {
-      print("Error fetchSeluruhTransaksi: $e");
-      seluruhTransaksi.clear();
-      return [];
+    } else {
+      print("❌ Gagal fetch seluruh transaksi: ${response.statusCode}");
     }
+
+    seluruhTransaksi.clear();
+    seluruhTransaksiBank.clear();
+    return [];
+  } catch (e) {
+    print("Error fetchSeluruhTransaksi: $e");
+    seluruhTransaksi.clear();
+    seluruhTransaksiBank.clear();
+    return [];
   }
+}
+
 
 // =========================================================
 // ✏️ EDIT TRANSAKSI BY ID
