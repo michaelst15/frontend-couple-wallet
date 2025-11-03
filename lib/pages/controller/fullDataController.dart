@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:couple_wallet/pages/login.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -20,7 +22,7 @@ class FullDataController extends GetxController {
 
   // ✅ Base URL
   // final String baseUrl = "https://backend-couple-wallet-michaelst152166-1e8lpgte.apn.leapcell.dev";
-  final String baseUrl = "https://f5ca77d6659c.ngrok-free.app";
+  final String baseUrl = "https://f3bd8980dac9.ngrok-free.app";
 
   // ✅ Simpan data login
   // ✅ Simpan data login
@@ -86,17 +88,47 @@ class FullDataController extends GetxController {
     }
 
     // Panggil ini setiap kali data diperbarui
-Future<void> refreshData() async {
+Future<void> refreshData({DateTime? selectedDate}) async {
   if (fullData['email'] != null && fullData['password'] != null) {
     try {
       isLoading.value = true;
+
+      // 🔹 Format tanggal (jika ada)
+      String? formattedDate;
+      if (selectedDate != null) {
+        formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate);
+      }
 
       // Simpan data lama untuk perbandingan
       final oldPemasukan = List<Map<String, dynamic>>.from(pemasukanHarian);
       final oldPengeluaran = List<Map<String, dynamic>>.from(pengeluaranHarian);
 
-      // Ambil data terbaru dari server
+      // 🔹 Ambil data terbaru dari server
+      // Jika API kamu bisa terima parameter tanggal, gunakan seperti ini:
+      // final url = Uri.parse("$baseUrl/get-transaksi-lainnya?tanggal=$formattedDate");
+      // await loadDataByTanggal(url);
+
+      // Jika tidak, gunakan cara umum:
       await loadFullData(fullData['email'], fullData['password']);
+
+      // 🔹 Filter data sesuai tanggal terpilih (jika ada)
+      if (selectedDate != null) {
+        pemasukanHarian.value = pemasukanHarian
+            .where((trx) =>
+                trx['tanggal_update'] != null &&
+                DateTime.parse(trx['tanggal_update']).year == selectedDate.year &&
+                DateTime.parse(trx['tanggal_update']).month == selectedDate.month &&
+                DateTime.parse(trx['tanggal_update']).day == selectedDate.day)
+            .toList();
+
+        pengeluaranHarian.value = pengeluaranHarian
+            .where((trx) =>
+                trx['tanggal_update'] != null &&
+                DateTime.parse(trx['tanggal_update']).year == selectedDate.year &&
+                DateTime.parse(trx['tanggal_update']).month == selectedDate.month &&
+                DateTime.parse(trx['tanggal_update']).day == selectedDate.day)
+            .toList();
+      }
 
       // ✅ Bandingkan apakah ada pemasukan baru
       bool adaPemasukanBaru = pemasukanHarian.any((p) =>
@@ -106,12 +138,12 @@ Future<void> refreshData() async {
       bool adaPengeluaranBaru = pengeluaranHarian.any((p) =>
           !oldPengeluaran.any((old) => jsonEncode(old) == jsonEncode(p)));
 
-      // Tambahkan notifikasi baru jika ada perubahan
+      // 🔔 Tambahkan notifikasi baru jika ada perubahan
       if (adaPemasukanBaru) {
         hasNewNotification.value = true;
         newDataList.add({
           "judul": "Pemasukan Baru",
-          "detail": "Ada pemasukan baru tercatat di sistem.",
+          "detail": "Ada pemasukan baru tercatat di sistem pada ${formattedDate ?? 'hari ini'}.",
         });
       }
 
@@ -119,9 +151,11 @@ Future<void> refreshData() async {
         hasNewNotification.value = true;
         newDataList.add({
           "judul": "Pengeluaran Baru",
-          "detail": "Ada pengeluaran baru tercatat di sistem.",
+          "detail": "Ada pengeluaran baru tercatat di sistem pada ${formattedDate ?? 'hari ini'}.",
         });
       }
+
+      print("✅ Refresh data berhasil untuk tanggal ${formattedDate ?? 'semua tanggal'}");
 
     } catch (e) {
       print("❌ Error refreshData: $e");
@@ -130,6 +164,7 @@ Future<void> refreshData() async {
     }
   }
 }
+
 
 
     void clearNotificationFlag() {
@@ -817,64 +852,263 @@ Future<bool> simpanTransaksi({
 // RxList yang sudah ada
 RxList<Map<String, dynamic>> seluruhTransaksi = <Map<String, dynamic>>[].obs;
 
-// 🔹 Helper untuk mengambil transaksi 'other' berdasarkan tanggal
-List<Map<String, dynamic>> getOtherTransactionsByDate(DateTime date) {
-  DateTime dateKey = DateTime(date.year, date.month, date.day);
+ final Rx<DateTime?> selectedDate = Rx<DateTime?>(null);
+final RxString selectedStatus = "Pemasukan".obs;
 
-  return seluruhTransaksi.where((trx) {
-    if (trx['source'] != 'other' || trx['tanggal_update'] == null) return false;
+  // ===============================
+  // 🔹 Ambil transaksi "other" per tanggal
+  // ===============================
+  List<Map<String, dynamic>> getOtherTransactionsByDate(DateTime date) {
+    DateTime dateKey = DateTime(date.year, date.month, date.day);
+    
 
-    DateTime trxDate = DateTime.parse(trx['tanggal_update']);
-    DateTime trxKey = DateTime(trxDate.year, trxDate.month, trxDate.day);
+    return seluruhTransaksi.where((trx) {
+      if (trx['source'] != 'other' || trx['tanggal_update'] == null) return false;
 
-    return trxKey == dateKey;
-  }).toList();
-}
+      DateTime trxDate = DateTime.parse(trx['tanggal_update']);
+      DateTime trxKey = DateTime(trxDate.year, trxDate.month, trxDate.day);
 
-Future<List<Map<String, dynamic>>> fetchSeluruhTransaksi() async {
-  if (fullData['room_id'] == null) return [];
+      return trxKey == dateKey;
+    }).toList();
+  }
+
+  // ===============================
+  // 🔹 Update transaksi 'other' berdasarkan tanggal
+  // ===============================
+  void updateTransaksiNonBank({
+    required DateTime tanggal,
+    required String status,
+    required double nominalBaru,
+  }) {
+    DateTime dateKey = DateTime(tanggal.year, tanggal.month, tanggal.day);
+
+    bool updated = false;
+
+    for (int i = 0; i < seluruhTransaksi.length; i++) {
+      var trx = seluruhTransaksi[i];
+
+      if (trx['source'] == 'other' && trx['tanggal_update'] != null) {
+        DateTime trxDate = DateTime.parse(trx['tanggal_update']);
+        DateTime trxKey = DateTime(trxDate.year, trxDate.month, trxDate.day);
+
+        if (trxKey == dateKey) {
+          // 🔸 Update data transaksi
+          seluruhTransaksi[i] = {
+            ...trx,
+            'nominal': nominalBaru,
+            'jenis': status,
+            'tanggal_update': tanggal.toIso8601String(),
+          };
+          updated = true;
+        }
+      }
+    }
+
+    // 🔸 Paksa RxList notifikasi ulang ke UI
+    if (updated) {
+      seluruhTransaksi.refresh(); // ⬅️ ini yang memicu UI update otomatis
+      print("🔁 Transaksi non-bank tanggal $dateKey berhasil diperbarui.");
+    } else {
+      print("⚠️ Tidak ditemukan transaksi 'other' di tanggal $dateKey.");
+    }
+  }
+
+  // ===============================
+  // 🔹 Fetch seluruh transaksi dari server
+  // ===============================
+  Future<List<Map<String, dynamic>>> fetchSeluruhTransaksi() async {
+    if (fullData['room_id'] == null) return [];
+
+    try {
+      final uri = Uri.parse("$baseUrl/seluruh-transaksi").replace(
+        queryParameters: {
+          "room_id": fullData['room_id'].toString(),
+        },
+      );
+
+      print("🌐 Fetch Seluruh Transaksi: $uri");
+
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data["status"] == "success" && data["data"] != null) {
+          List<Map<String, dynamic>> listTransaksi =
+              List<Map<String, dynamic>>.from(data["data"]);
+
+          // 🔹 Update RxList supaya UI reaktif
+          seluruhTransaksi.value = listTransaksi;
+
+          print("📦 Total transaksi: ${listTransaksi.length}");
+          return listTransaksi;
+        } else {
+          print("⚠️ Response sukses tapi data kosong");
+        }
+      } else {
+        print("❌ Gagal fetch seluruh transaksi: ${response.statusCode}");
+      }
+
+      // 🔹 Kosongkan jika gagal
+      seluruhTransaksi.clear();
+      return [];
+    } catch (e) {
+      print("Error fetchSeluruhTransaksi: $e");
+      seluruhTransaksi.clear();
+      return [];
+    }
+  }
+
+// =========================================================
+// ✏️ EDIT TRANSAKSI BY ID
+// =========================================================
+RxDouble totalSaldo = 0.0.obs;
+
+Future<bool> editTransaksiByID({
+  required int id,
+  required String jenis,
+  required double nominal,
+  required BuildContext context,
+}) async {
+  final url = Uri.parse("$baseUrl/edit-transaksi-lainnya");
 
   try {
-    final uri = Uri.parse("$baseUrl/seluruh-transaksi").replace(
-      queryParameters: {
-        "room_id": fullData['room_id'].toString(),
-      },
+    final body = jsonEncode({
+      "id": id,
+      "jenis": jenis,
+      "nominal": nominal,
+    });
+
+    final response = await http.put(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: body,
     );
-
-    print("🌐 Fetch Seluruh Transaksi: $uri");
-
-    final response = await http.get(uri);
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      if (data["status"] == "success" && data["data"] != null) {
-        List<Map<String, dynamic>> listTransaksi =
-            List<Map<String, dynamic>>.from(data["data"]);
 
-        // 🔹 Update RxList sehingga UI reaktif
-        seluruhTransaksi.value = listTransaksi;
+      // ✅ Tampilkan popup sukses
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.check_circle, color: Colors.green, size: 70),
+                const SizedBox(height: 15),
+                Text(
+                  "Perubahan berhasil dilakukan",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFF48668),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF48668),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text("OK", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
 
-        print("📦 Total transaksi: ${listTransaksi.length}");
-        return listTransaksi;
-      } else {
-        print("⚠️ Response sukses tapi data kosong");
-      }
+      await refreshData();
+      return true; // ✅ sukses
     } else {
-      print("❌ Gagal fetch seluruh transaksi: ${response.statusCode}");
+      // ❌ Popup gagal karena status code bukan 200
+      showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error, color: Colors.redAccent, size: 70),
+                const SizedBox(height: 15),
+                Text(
+                  "Perubahan gagal dilakukan (${response.statusCode})",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.redAccent,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF48668),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text("OK", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      return false;
     }
-
-    // kosongkan seluruhTransaksi kalau gagal
-    seluruhTransaksi.value = [];
-    return [];
   } catch (e) {
-    print("Error fetchSeluruhTransaksi: $e");
-    seluruhTransaksi.value = [];
-    return [];
+    // ❌ Popup error network / server
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.redAccent, size: 70),
+              const SizedBox(height: 15),
+              Text(
+                "Terjadi kesalahan: $e",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.redAccent,
+                ),
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF48668),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text("OK", style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return false;
   }
 }
-
-
-
 
 }
 
