@@ -13,18 +13,13 @@ import 'package:lottie/lottie.dart';
 import 'package:image_picker/image_picker.dart';
 
 class FullDataController extends GetxController {
-  // ✅ Data utama hasil login
   var fullData = <String, dynamic>{}.obs;
 
-  // ✅ Loading state global
   var isLoading = false.obs;
 
-  // ✅ Data rooms untuk pendaftaran
   var rooms = <Map<String, dynamic>>[].obs;
 
-  // ✅ Base URL
-  // final String baseUrl = "https://backend-couple-wallet-michaelst152166-1e8lpgte.apn.leapcell.dev";
-  final String baseUrl = "https://f3bd8980dac9.ngrok-free.app";
+  final String baseUrl = "https://35fad924cc7c.ngrok-free.app";
 
   // ✅ Simpan data login
   // ✅ Simpan data login
