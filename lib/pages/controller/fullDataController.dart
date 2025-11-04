@@ -1151,5 +1151,73 @@ Future<bool> editTransaksiByID({
   }
 }
 
+
+
+Future<bool> editTransaksiUserByID({
+  required int id,
+  required Map<String, dynamic> body,
+  required BuildContext context,
+}) async {
+  final url = Uri.parse("$baseUrl/edit-transaksi-user");
+
+  try {
+    final response = await http.put(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 200) {
+      await refreshData();
+
+      showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.check_circle, color: Colors.green, size: 70),
+                const SizedBox(height: 15),
+                Text(
+                  "Transaksi berhasil diperbarui",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFFF48668),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF48668),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text("OK", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      return true;
+    } else {
+      print("❌ Gagal update: ${response.body}");
+      return false;
+    }
+  } catch (e) {
+    print("❌ Error editTransaksiUserByID: $e");
+    return false;
+  }
+}
+
+
+
 }
 
