@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'dart:ui';
 import 'package:couple_wallet/pages/controller/fullDataController.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:get/get.dart';
 import 'package:couple_wallet/main.dart';
 import 'package:couple_wallet/pages/register.dart';
+import 'package:lottie/lottie.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -69,8 +71,8 @@ Future<void> _login() async {
       ));
     });
   } catch (e) {
-    print("❌ Error saat login: $e");
-    _showLoginDialog(false, "Gagal terhubung ke server 😢", "");
+    print("Error saat login: $e");
+    _showLoginDialog(false, "Cek kembali akun anda", "");
   } finally {
     setState(() => _isLoading = false);
   }
@@ -79,75 +81,110 @@ Future<void> _login() async {
 
 
   /// Popup login sukses/gagal
-  void _showLoginDialog(bool isSuccess, String message, String userName) {
-    if (Get.isDialogOpen ?? false) Get.back();
+void _showLoginDialog(bool isSuccess, String message, String userName) {
+  if (Get.isDialogOpen ?? false) Get.back();
 
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: false,
-      barrierLabel: "Login Popup",
-      pageBuilder: (_, __, ___) => const SizedBox.shrink(),
-      transitionBuilder: (context, anim1, anim2, child) {
-        return Transform.scale(
-          scale: anim1.value,
-          child: Center(
-            child: Container(
-              width: 260,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  )
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    isSuccess
-                        ? Icons.check_circle_outline
-                        : Icons.cancel_outlined,
-                    color: isSuccess ? Colors.green : Colors.red,
-                    size: 64,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    message,
-                    style: TextStyle(
-                      color: isSuccess ? Colors.green : Colors.red,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      decoration: TextDecoration.none,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (userName.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      userName,
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
-                        decoration: TextDecoration.none,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ],
+  showGeneralDialog(
+    context: Get.context!,
+    barrierDismissible: false,
+    barrierLabel: "Login Popup",
+    pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+    transitionBuilder: (context, anim1, anim2, child) {
+      // ⏱️ Tutup otomatis setelah 3 detik
+      Future.delayed(const Duration(seconds: 3), () {
+        if (Get.isDialogOpen ?? false) Get.back();
+      });
+
+      return Transform.scale(
+        scale: Curves.easeOutBack.transform(anim1.value),
+        child: Stack(
+          children: [
+            // 🔹 Blur background di belakang dialog
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+              child: Container(
+                color: Colors.black.withOpacity(0.3),
               ),
             ),
-          ),
-        );
-      },
-      transitionDuration: const Duration(milliseconds: 300),
-    );
-  }
+
+            // 🔹 Konten utama popup
+            Center(
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.transparent, // tanpa background
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 🔹 Animasi sukses/gagal (jalan sekali)
+                    Lottie.asset(
+                      isSuccess
+                          ? 'lib/animasi/happy.json'
+                          : 'lib/animasi/failed.json',
+                      width: 100,
+                      height: 100,
+                      repeat: false,
+                      fit: BoxFit.contain,
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // 🔹 Pesan utama
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        decoration: TextDecoration.none,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.4),
+                            offset: const Offset(1, 1),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // 🔹 Nama user (jika ada)
+                    if (userName.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        userName,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                          letterSpacing: 0.8,
+                          decoration: TextDecoration.none,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withOpacity(0.3),
+                              offset: const Offset(1, 1),
+                              blurRadius: 5,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 400),
+  );
+}
+
+
 
   @override
   Widget build(BuildContext context) {

@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:get/get.dart';
+import 'package:lottie/lottie.dart';
 import '../widgets/menu_app_bar.dart';
 import './controller/fullDataController.dart'; // pastikan path sesuai
 
@@ -274,46 +276,93 @@ class _TransaksiPageState extends State<TransaksiPage> {
 }
 
 // --- ZoomPopup tetap sama ---
-class ZoomPopup extends StatelessWidget {
+class ZoomPopup extends StatefulWidget {
   final bool success;
   final String message;
-  const ZoomPopup({super.key, required this.success, required this.message});
+
+  const ZoomPopup({
+    super.key,
+    required this.success,
+    required this.message,
+  });
+
+  @override
+  State<ZoomPopup> createState() => _ZoomPopupState();
+}
+
+class _ZoomPopupState extends State<ZoomPopup> {
+  @override
+  void initState() {
+    super.initState();
+
+    // 🔹 Tutup otomatis setelah 3 detik
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        Navigator.of(context).pop(); // menutup popup otomatis
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Material(
-        borderRadius: BorderRadius.circular(16),
-        color: Colors.white,
-        child: Container(
-          width: 250,
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(success ? Icons.check_circle_outline : Icons.error_outline,
-                  color: success ? Colors.green : Colors.red, size: 60),
-              const SizedBox(height: 12),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF48668),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text("OK", style: TextStyle(color: Colors.white)),
-              ),
-            ],
+    return Stack(
+      children: [
+        // 🔹 Efek blur di belakang popup
+        BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            color: Colors.black.withOpacity(0.5),
           ),
         ),
-      ),
+
+        // 🔹 Konten popup di tengah layar
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.transparent, // tanpa background putih
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 🔹 Animasi sukses/gagal
+                Lottie.asset(
+                  widget.success
+                      ? 'lib/animasi/pemasukan.json'
+                      : 'lib/animasi/failed.json',
+                  width: 100,
+                  height: 100,
+                  repeat: false, // animasi hanya berjalan 1x
+                  fit: BoxFit.contain,
+                ),
+
+                const SizedBox(height: 16),
+
+                // 🔹 Pesan teks
+                Text(
+                  widget.message,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white, // selalu putih
+                    decoration: TextDecoration.none, // tanpa dekorasi
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withOpacity(0.4),
+                        offset: const Offset(1, 1),
+                        blurRadius: 6,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
+

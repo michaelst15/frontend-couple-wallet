@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:couple_wallet/pages/login.dart';
@@ -8,6 +9,7 @@ import 'package:get/get.dart';
 import 'package:google_ml_kit/google_ml_kit.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:lottie/lottie.dart';
 import 'package:image_picker/image_picker.dart';
 
 class FullDataController extends GetxController {
@@ -708,18 +710,18 @@ Future<List<String>?> scanStruk() async {
   // 💬 POPUP FEEDBACK
   // =========================================================
 void showPopup(BuildContext context, String message, bool success) {
-  double scale = 0; // nilai awal untuk animasi zoom-in dan zoom-out
+  double scale = 0; // animasi zoom
   bool closing = false;
 
   Get.dialog(
     StatefulBuilder(
       builder: (context, setState) {
-        // Jalankan animasi zoom-in saat popup muncul
+        // 🔹 Jalankan animasi zoom-in
         Future.delayed(const Duration(milliseconds: 50), () {
           setState(() => scale = 1);
         });
 
-        // Setelah 2 detik, jalankan animasi zoom-out lalu tutup
+        // 🔹 Tutup otomatis setelah 2,5 detik
         Future.delayed(const Duration(seconds: 2), () async {
           if (!closing) {
             closing = true;
@@ -729,36 +731,87 @@ void showPopup(BuildContext context, String message, bool success) {
           }
         });
 
-        return Center(
-          child: AnimatedScale(
-            scale: scale,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOutBack,
-            child: AnimatedOpacity(
-              opacity: scale,
-              duration: const Duration(milliseconds: 300),
-              child: AlertDialog(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                backgroundColor: Colors.white,
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      success ? Icons.check_circle_outline : Icons.error_outline,
-                      color: success ? Colors.green : Colors.redAccent,
-                      size: 60,
+        return Stack(
+          children: [
+            // 🔹 Blur background belakang
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+              child: Container(color: Colors.black.withOpacity(0.4)),
+            ),
+
+            // 🔹 Popup transparan dengan animasi zoom dan fade
+            Center(
+              child: AnimatedScale(
+                scale: scale,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOutBack,
+                child: AnimatedOpacity(
+                  opacity: scale,
+                  duration: const Duration(milliseconds: 300),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent, // tanpa background
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      success ? "Berhasil \n$message" : "Gagal\n$message",
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // 🔹 Animasi Lottie (jalan 1x)
+                        Lottie.asset(
+                          success
+                              ? 'lib/animasi/happy.json'
+                              : 'lib/animasi/failed.json',
+                          width: 100,
+                          height: 100,
+                          repeat: false,
+                        ),
+                        const SizedBox(height: 8),
+
+                        // 🔹 Teks utama
+                        Text(
+                          success ? "Berhasil" : "Gagal",
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            decoration: TextDecoration.none,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withOpacity(0.5),
+                                offset: const Offset(1, 1),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // 🔹 Pesan tambahan
+                        Text(
+                          message,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                            decoration: TextDecoration.none,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withOpacity(0.4),
+                                offset: const Offset(1, 1),
+                                blurRadius: 5,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         );
       },
     ),

@@ -109,6 +109,9 @@ flutter:
     - lib/image/logo_couple_wallet.png
     - lib/animasi/notifikasi.json
     - lib/animasi/finance.json
+    - lib/animasi/happy.json
+    - lib/animasi/failed.json
+    - lib/animasi/pemasukan.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

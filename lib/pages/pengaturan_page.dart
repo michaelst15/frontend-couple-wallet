@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:couple_wallet/pages/controller/fullDataController.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -228,56 +230,80 @@ void _showUbahJumlahDialog() {
           }
 
           // 🟢 Popup sukses/gagal
-          void showResultPopup(bool success) {
-            showDialog(
-              context: context,
-              barrierDismissible: true,
-              builder: (context) {
-                return Dialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(25),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          success ? Icons.check_circle_rounded : Icons.cancel_rounded,
-                          color: success ? Color(0xFFF48668) : Colors.red,
-                          size: 60,
-                        ),
-                        const SizedBox(height: 15),
-                        Text(
-                          success
-                              ? "Perubahan berhasil dilakukan"
-                              : "Perubahan gagal dilakukan",
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: success ? Color(0xFFF48668) : Color(0xFFF48668),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 15),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                success ? Color(0xFFF48668) : Color(0xFFF48668),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: const Text("Tutup", style: TextStyle(color: Colors.white)),
-                        ),
-                      ],
+          void showResultPopup(BuildContext context, bool success) {
+          showDialog(
+            context: context,
+            barrierDismissible: false, // tidak bisa ditutup manual
+            builder: (context) {
+              // 🔹 Tutup otomatis setelah 3 detik
+              Future.delayed(const Duration(seconds: 3), () {
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
+              });
+
+              return Stack(
+                children: [
+                  // 🔹 Efek blur di belakang popup
+                  BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                    child: Container(
+                      color: Colors.black.withOpacity(0.6),
                     ),
                   ),
-                );
-              },
-            );
-          }
+
+                  // 🔹 Isi popup di tengah
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.transparent, // tanpa background putih
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 🔹 Animasi sukses / gagal
+                          Lottie.asset(
+                            success
+                                ? 'lib/animasi/pemasukan.json'
+                                : 'lib/animasi/failed.json',
+                            width: 120,
+                            height: 120,
+                            repeat: false, // hanya jalan 1x
+                            fit: BoxFit.contain,
+                          ),
+                          const SizedBox(height: 16),
+
+                          // 🔹 Pesan teks
+                          Text(
+                            success
+                                ? "Perubahan berhasil dilakukan"
+                                : "Perubahan gagal dilakukan",
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white, // selalu putih
+                              decoration: TextDecoration.none, // tanpa garis
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black.withOpacity(0.5),
+                                  offset: const Offset(1, 1),
+                                  blurRadius: 6,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        }
 
           return AlertDialog(
             shape: RoundedRectangleBorder(
@@ -609,9 +635,22 @@ void _showUbahJumlahDialog() {
                                       double.tryParse(_jumlahController.text.trim()) ?? 0;
                                   if (jumlah <= 0) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text("Masukkan jumlah yang valid!"),
+                                    const SnackBar(
+                                      content: Text(
+                                        "Masukkan jumlah yang valid !",
+                                        style: TextStyle(
+                                          color: Colors.white, // teks tetap kontras
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
+                                      backgroundColor: Color(0xFFF48668), // warna latar belakang
+                                      duration: Duration(seconds: 2),
+                                      behavior: SnackBarBehavior.floating, // tampil sedikit di atas
+                                      margin: EdgeInsets.all(12), // jarak dari tepi
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.all(Radius.circular(12)), // sudut membulat
+                                      ),
+                                    ),
                                     );
                                     return;
                                   }
@@ -628,7 +667,7 @@ void _showUbahJumlahDialog() {
                                   setState(() => isLoading = false);
 
                                   Navigator.pop(context);
-                                  showResultPopup(success);
+                                  showResultPopup(context, true);  // untuk berhasil
                                 },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFF48668),
@@ -732,52 +771,77 @@ void _showUbahJumlahBankDialog() {
           // 🟢 Popup hasil sukses/gagal
           void showResultPopup(bool success) {
             showDialog(
-              context: context,
-              barrierDismissible: true,
-              builder: (context) {
-                return Dialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(25),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          success ? Icons.check_circle_rounded : Icons.cancel_rounded,
-                          color: success ? statusColor : Colors.red,
-                          size: 60,
-                        ),
-                        const SizedBox(height: 15),
-                        Text(
-                          success
-                              ? "Perubahan berhasil dilakukan"
-                              : "Perubahan gagal dilakukan",
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: statusColor,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 15),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: statusColor,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: const Text("Tutup", style: TextStyle(color: Colors.white)),
-                        ),
-                      ],
+            context: context,
+            barrierDismissible: false, // tidak bisa ditutup manual
+            builder: (context) {
+              // 🔹 Tutup otomatis setelah 3 detik
+              Future.delayed(const Duration(seconds: 3), () {
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
+              });
+
+              return Stack(
+                children: [
+                  // 🔹 Efek blur di belakang popup
+                  BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                    child: Container(
+                      color: Colors.black.withOpacity(0.6),
                     ),
                   ),
-                );
-              },
-            );
+
+                  // 🔹 Isi popup di tengah
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.transparent, // tanpa background putih
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 🔹 Animasi sukses / gagal
+                          Lottie.asset(
+                            success
+                                ? 'lib/animasi/pemasukan.json'
+                                : 'lib/animasi/failed.json',
+                            width: 120,
+                            height: 120,
+                            repeat: false, // hanya jalan 1x
+                            fit: BoxFit.contain,
+                          ),
+                          const SizedBox(height: 16),
+
+                          // 🔹 Pesan teks
+                          Text(
+                            success
+                                ? "Perubahan berhasil dilakukan"
+                                : "Perubahan gagal dilakukan",
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white, // selalu putih
+                              decoration: TextDecoration.none, // tanpa garis
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black.withOpacity(0.5),
+                                  offset: const Offset(1, 1),
+                                  blurRadius: 6,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
           }
 
           return AlertDialog(
@@ -1052,9 +1116,22 @@ void _showUbahJumlahBankDialog() {
                                   final jumlah = double.tryParse(_jumlahBankController.text.trim()) ?? 0;
                                   if (jumlah <= 0) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text("Masukkan jumlah yang valid!"),
+                                    const SnackBar(
+                                      content: Text(
+                                        "Masukkan jumlah yang valid !",
+                                        style: TextStyle(
+                                          color: Colors.white, // teks tetap kontras
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
+                                      backgroundColor: Color(0xFFF48668), // warna latar belakang
+                                      duration: Duration(seconds: 2),
+                                      behavior: SnackBarBehavior.floating, // tampil sedikit di atas
+                                      margin: EdgeInsets.all(12), // jarak dari tepi
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.all(Radius.circular(12)), // sudut membulat
+                                      ),
+                                    ),
                                     );
                                     return;
                                   }
