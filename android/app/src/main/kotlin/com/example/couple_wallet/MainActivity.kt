@@ -1,4 +1,4 @@
-package com.example.couple_wallet
+package com.mikes.couplewallet
 
 import io.flutter.embedding.android.FlutterActivity
 
